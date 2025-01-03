@@ -134,3 +134,48 @@ if __name__ == "__main__":
         server_port=7860,
         auth=("admin", "admin123")  # Remove or modify for production
     )
+
+
+(text2sql) [domino@run-677775f203ca6841bc367eca-4kwk5 t2s]$ python3 gradiosql.py 
+Traceback (most recent call last):
+  File "/mnt/text2sql/lib64/python3.11/site-packages/httpx/_urlparse.py", line 409, in normalize_port
+    port_as_int = int(port)
+                  ^^^^^^^^^
+ValueError: invalid literal for int() with base 10: ':1]'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/mnt/t2s/gradiosql.py", line 1, in <module>
+    import gradio as gr
+  File "/mnt/text2sql/lib64/python3.11/site-packages/gradio/__init__.py", line 3, in <module>
+    import gradio._simple_templates
+  File "/mnt/text2sql/lib64/python3.11/site-packages/gradio/_simple_templates/__init__.py", line 1, in <module>
+    from .simpledropdown import SimpleDropdown
+  File "/mnt/text2sql/lib64/python3.11/site-packages/gradio/_simple_templates/simpledropdown.py", line 7, in <module>
+    from gradio.components.base import Component, FormComponent
+  File "/mnt/text2sql/lib64/python3.11/site-packages/gradio/components/__init__.py", line 1, in <module>
+    from gradio.components.annotated_image import AnnotatedImage
+  File "/mnt/text2sql/lib64/python3.11/site-packages/gradio/components/annotated_image.py", line 14, in <module>
+    from gradio import processing_utils, utils
+  File "/mnt/text2sql/lib64/python3.11/site-packages/gradio/processing_utils.py", line 120, in <module>
+    sync_client = httpx.Client(transport=sync_transport)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/httpx/_client.py", line 697, in __init__
+    self._mounts: dict[URLPattern, BaseTransport | None] = {
+                                                           ^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/httpx/_client.py", line 698, in <dictcomp>
+    URLPattern(key): None
+    ^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/httpx/_utils.py", line 172, in __init__
+    url = URL(pattern)
+          ^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/httpx/_urls.py", line 117, in __init__
+    self._uri_reference = urlparse(url, **kwargs)
+                          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/httpx/_urlparse.py", line 321, in urlparse
+    parsed_port: int | None = normalize_port(port, scheme)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/httpx/_urlparse.py", line 411, in normalize_port
+    raise InvalidURL(f"Invalid port: {port!r}")
+httpx.InvalidURL: Invalid port: ':1]'
