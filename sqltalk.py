@@ -303,3 +303,19 @@ def llm_search(query):
     
     response = requests.request("POST", url, headers=headers, data=payload)
     return {'response': json.loads(response.text)["prediction"], 'status_message': response}
+
+
+curl --location 'https://vegas-llm-test.ebiz.verizon.com/vegas/apps/prompt/LLMInsight'
+--header 'Content-Type: application/json' 
+--data '{
+  "useCase": "text2sql",
+  "contextId": "zero_shot_context",
+  "preSeed_injection_map": {
+    "{Query}": ""
+  },
+  "parameters": {
+    "temperature": 0.9,
+    "maxOutputTokens": 2048,
+    "topP": 1
+  }
+}'
