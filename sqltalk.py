@@ -7,7 +7,6 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -15,26 +14,43 @@ class DatabaseAnalyzer:
     def __init__(self):
         self.project_id = "vz-it-np-ienv-test-vegsdo-0"
         self.dataset_id = "vegas_monitoring"
+        self.table_id = "api_status_monitoring"
         self.llm_endpoint = "https://vegas-llm-test.ebiz.verizon.com/vegas/apps/prompt/LLMInsight"
-        self.session = self._create_session()
-    
-    def _create_session(self) -> requests.Session:
-        """Create a session with retry strategy"""
-        session = requests.Session()
-        retry_strategy = Retry(
-            total=3,
-            backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-        return session
+        
+    def test_bq_connection(self) -> bool:
+        """Test BigQuery connection by running a simple query"""
+        try:
+            test_query = f"""
+                SELECT * 
+                FROM `{self.project_id}.{self.dataset_id}.{self.table_id}`
+                LIMIT 5
+            """
+            logger.info("Testing BigQuery connection...")
+            result = self.execute_bq_command(test_query)
+            
+            if "error" in result:
+                logger.error(f"BigQuery connection test failed: {result['error']}")
+                return False
+                
+            logger.info("BigQuery connection test successful")
+            logger.info("Sample data:")
+            logger.info(json.dumps(result['data'], indent=2))
+            return True
+            
+        except Exception as e:
+            logger.error(f"BigQuery connection test failed: {str(e)}")
+            return False
 
     def execute_bq_command(self, query: str) -> Dict:
-        """Execute BigQuery command using bq CLI"""
+        """Execute BigQuery command using bq CLI with improved error handling"""
         try:
-            cmd = f'bq query --nouse_legacy_sql "{query}"'
+            # Clean and format the query
+            cleaned_query = query.replace('"', '\\"').replace('\n', ' ')
+            cmd = f'bq query --nouse_legacy_sql "{cleaned_query}"'
+            
+            logger.info(f"Executing query: {cleaned_query}")
+            
+            # Execute the command
             process = subprocess.Popen(
                 cmd,
                 shell=True,
@@ -42,7 +58,9 @@ class DatabaseAnalyzer:
                 stderr=subprocess.PIPE,
                 text=True
             )
-            stdout, stderr = process.communicate()
+            
+            # Add timeout to prevent hanging
+            stdout, stderr = process.communicate(timeout=60)
             
             if process.returncode != 0:
                 logger.error(f"BQ Query failed: {stderr}")
@@ -57,16 +75,36 @@ class DatabaseAnalyzer:
             data = []
             for row in rows[1:]:
                 values = row.split(',')
-                data.append(dict(zip(headers, values)))
+                if len(values) == len(headers):
+                    data.append(dict(zip(headers, values)))
                 
             return {"data": data}
             
+        except subprocess.TimeoutExpired:
+            logger.error("Query execution timed out")
+            return {"error": "Query execution timed out"}
         except Exception as e:
             logger.error(f"Error executing BQ command: {str(e)}")
             return {"error": str(e)}
 
-    def call_llm_api(self, query: str, max_retries: int = 3) -> Dict:
-        """Call the LLM API with retry mechanism"""
+    def create_session_with_retry(self) -> requests.Session:
+        """Create a session with improved retry strategy"""
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=5,  # Increased from 3 to 5
+            backoff_factor=2,  # Increased from 1 to 2
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["POST", "GET"]  # Explicitly allow POST
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy, pool_maxsize=10)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        return session
+
+    def call_llm_api(self, query: str, max_retries: int = 5) -> Dict:
+        """Call the LLM API with improved retry mechanism"""
+        session = self.create_session_with_retry()
+        
         payload = {
             "useCase": "text2sql",
             "contextId": "zero_shot_context",
@@ -80,15 +118,18 @@ class DatabaseAnalyzer:
             }
         }
         
-        headers = {'Content-Type': 'application/json'}
+        headers = {
+            'Content-Type': 'application/json',
+            'Connection': 'keep-alive'
+        }
         
         for attempt in range(max_retries):
             try:
-                response = self.session.post(
+                response = session.post(
                     self.llm_endpoint,
                     json=payload,
                     headers=headers,
-                    timeout=30
+                    timeout=60
                 )
                 response.raise_for_status()
                 return response.json()
@@ -100,37 +141,14 @@ class DatabaseAnalyzer:
                     return {"error": str(e)}
                 time.sleep(2 ** attempt)  # Exponential backoff
 
-    def process_query(self, query: str) -> str:
-        """Process a natural language query and return the response"""
-        try:
-            # Get SQL query from LLM
-            logger.info(f"Processing query: {query}")
-            llm_response = self.call_llm_api(query)
-            
-            if "error" in llm_response:
-                return f"LLM API Error: {llm_response['error']}"
-            
-            # Extract SQL query from LLM response
-            sql_query = llm_response.get('generated_sql', '')
-            if not sql_query:
-                return "No SQL query was generated"
-            
-            # Execute the query
-            logger.info(f"Executing SQL query: {sql_query}")
-            results = self.execute_bq_command(sql_query)
-            
-            if "error" in results:
-                return f"Query execution error: {results['error']}"
-                
-            return json.dumps(results['data'], indent=2)
-            
-        except Exception as e:
-            logger.error(f"Error in process_query: {str(e)}")
-            return f"Error processing query: {str(e)}"
-
 def main():
     analyzer = DatabaseAnalyzer()
     
+    # First test BigQuery connection
+    if not analyzer.test_bq_connection():
+        print("Failed to connect to BigQuery. Exiting...")
+        return
+        
     print("\nWelcome to Database Analyzer!")
     print("Type 'quit' to exit or 'help' for sample queries")
     
@@ -154,16 +172,18 @@ def main():
         print("\nProcessing query...\n")
         start_time = time.time()
         
-        response = analyzer.process_query(command)
+        # Execute direct BQ query for testing
+        test_query = f"""
+            SELECT *
+            FROM `{analyzer.project_id}.{analyzer.dataset_id}.{analyzer.table_id}`
+            LIMIT 5
+        """
+        response = analyzer.execute_bq_command(test_query)
         
         processing_time = time.time() - start_time
         print(f"\nResponse (processed in {processing_time:.2f} seconds):")
-        print(response)
+        print(json.dumps(response, indent=2))
         print("\n" + "="*80)
 
 if __name__ == "__main__":
     main()
-
-
-INFO:__main__:Processing query: what are the column names in api_status_monitoring table?
-WARNING:__main__:Attempt 1 failed: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
