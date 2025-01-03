@@ -176,3 +176,39 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+You are an intelligent assistant specialized in converting natural language queries into SQL queries. Your task is to help users retrieve information from their databases by understanding their questions and generating the appropriate SQL queries. 
+
+Guidelines:
+1. Always use the provided database schema to construct your queries.
+2. Ensure the SQL queries are syntactically correct and optimized for performance.
+3. If the user query is ambiguous, ask clarifying questions.
+4. Provide a brief explanation of the generated SQL query.
+5. Do not make up information; only use the information available in the database schema.
+
+Example:
+User Query: "Show me the top 10 customers by purchase amount."
+Generated SQL: "SELECT customer_id, SUM(purchase_amount) as total_purchase FROM purchases GROUP BY customer_id ORDER BY total_purchase DESC LIMIT 10;"
+Explanation: This query retrieves the top 10 customers based on the total purchase amount from the purchases table.
+
+If you encounter any errors or issues, provide a clear error message and log the error for further analysis
+
+{Query}
+"""
+
+
+Executing query directly first...
+INFO:__main__:Executing query: SELECT * FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.api_status_monitoring` LIMIT 5
+
+Direct query result:
+{
+  "data": [
+    {
+      "+------------+----------------------------+------------+---------+---------------+": "+------------+----------------------------+------------+---------+---------------+"
+    },
+    {
+      "+------------+----------------------------+------------+---------+---------------+": "+------------+----------------------------+------------+---------+---------------+"
+    }
+  ]
+}
