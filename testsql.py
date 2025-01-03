@@ -273,3 +273,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+wrap this with gradio as input to select the project , dataset and query and output as result . also add the in btween processing happens during fuction calling by clicking expand option while processing the input nl. name this ap as NL to SQL - Verizon
