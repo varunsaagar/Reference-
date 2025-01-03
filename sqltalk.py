@@ -187,3 +187,13 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+(text2sql) [domino@run-677775f203ca6841bc367eca-4kwk5 t2s]$ python3 bq_reader.py 
+INFO:__main__:Testing BigQuery connection...
+INFO:__main__:Executing query:                  SELECT *                  FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.api_status_monitoring`                 LIMIT 5             
+ERROR:__main__:BQ Query failed: /bin/sh: vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.api_status_monitoring: command not found
+
+ERROR:__main__:BigQuery connection test failed: /bin/sh: vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.api_status_monitoring: command not found
+
+Failed to connect to BigQuery. Exiting...
