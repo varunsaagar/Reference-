@@ -146,3 +146,30 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+Error calling LLM API: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+Response (processed in 14.63 seconds):
+{
+  "original_prompt": "how many rows in the table ",
+  "function_calls": [
+    {
+      "name": "list_datasets",
+      "params": {},
+      "response": "datasetId                              \n ------------------------------------------------------------------ \n  Calculator                                                        \n  Test                                                              \n  agent_workflow_as_service                                         \n  agentic_services_demo                                             \n  agentic_services_demo_cal                                         \n  agentic_services_demo_calculator                                  \n  agentic_services_demo_fwa                                         \n  agentic_services_demo_fwa_multi_agent_endpoint_va                 \n  agentic_services_demo_fwa_multi_agent_endpoint_va1                \n  agentic_services_demo_fwa_single_agent                            \n  agentic_services_demo_fwa_single_agent_endpoint                   \n  agentic_services_demo_fwa_single_agent_endpoint_flash             \n  agentic_services_demo_fwa_single_agent_endpoint_flash_ritvik      \n  agentic_services_demo_fwa_single_agent_endpoint_flash_ritvikg     \n  agentic_services_demo_fwa_single_agent_endpoint_flash_ritvikg1    \n  agentic_services_demo_fwa_single_agent_endpoint_flash_ritvikgpro  \n  agentic_services_demo_fwa_single_agent_flash_ritvik               \n  agentic_services_demo_fwa_single_agent_saras                      \n  agentic_services_demo_fwa_single_agent_saras1                     \n  agentic_services_demo_fwa_single_agent_saras2                     \n  agentic_services_demo_fwa_single_agent_saras3                     \n  agentic_services_demo_fwa_va                                      \n  agentic_services_demo_fwa_va1                                     \n  agentic_services_demo_vcg                                         \n  agentic_services_demo_visible                                     \n  agentic_workflow_as_service                                       \n  calculator_demo                                                   \n  convo1                                                            \n  d3                                                                \n  final_hackathon_data                                              \n  multi_agentic_workflow                                            \n  r1                                                                \n  r4                                                                \n  s1                                                                \n  s3                                                                \n  sam1                                                              \n  samp1                                                             \n  sample1                                                           \n  sample_108                                                        \n  sample_dataset                                                    \n  sample_dataset1                                                   \n  sample_dataset_partioning                                         \n  sample_dataset_without_partioning                                 \n  ss1                                                               \n  t5                                                                \n  test                                                              \n  vegas_monitoring                                                  \n  vz_aid_vegs_gcp_logview                                           \n  vz_test_for_gemini_batch                                          \n  vz_vegas"
+    },
+    {
+      "name": "list_tables",
+      "params": {
+        "dataset_id": "vegas_monitoring"
+      },
+      "response": "tableId          Type    Labels   Time Partitioning   Clustered Fields  \n ----------------------- ------- -------- ------------------- ------------------ \n  api_status_monitoring   TABLE"
+    }
+  ],
+  "final_result": "No SQL query generated"
+}
+
+================================================================================
+
