@@ -97,21 +97,26 @@ class DatabaseAnalyzer:
     def init_bigquery(self):
         """Initialize BigQuery client and check connection"""
         try:
-            self.client = bigquery.Client()
+            # Explicitly set project
+            self.client = bigquery.Client(project=BIGQUERY_PROJECT_ID)
+            
             # Test the connection by trying to access the dataset
-            self.client.get_dataset(f"{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}")
+            dataset_ref = f"{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}"
+            self.client.get_dataset(dataset_ref)
             print("✅ Successfully connected to BigQuery")
             print(f"   Project: {BIGQUERY_PROJECT_ID}")
             print(f"   Dataset: {BIGQUERY_DATASET_ID}")
             
             # List available tables
-            tables = list(self.client.list_tables(BIGQUERY_DATASET_ID))
+            dataset = self.client.dataset(BIGQUERY_DATASET_ID)
+            tables = list(self.client.list_tables(dataset))
             print(f"\nAvailable tables ({len(tables)}):")
             for table in tables:
                 print(f"   • {table.table_id}")
                 
-        except exceptions.PermissionDenied:
+        except exceptions.PermissionDenied as e:
             print("❌ Error: Permission denied. Please check your credentials and project access.")
+            print(f"Detailed error: {str(e)}")
             raise
         except exceptions.NotFound:
             print("❌ Error: Dataset not found. Please check your project and dataset IDs.")
@@ -119,7 +124,7 @@ class DatabaseAnalyzer:
         except Exception as e:
             print(f"❌ Error connecting to BigQuery: {str(e)}")
             raise
-    
+
     def init_sqlite(self):
         """Initialize SQLite connection and check database"""
         try:
