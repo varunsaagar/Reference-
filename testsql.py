@@ -273,9 +273,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-❌ Error connecting to BigQuery: 403 GET https://bigquery.googleapis.com/bigquery/v2/projects/vz-it-np-ienv-test-vegsdo-0/datasets/vegas_monitoring?prettyPrint=false: Access Denied: 
-
-
-Dataset vz-it-np-ienv-test-vegsdo-0:vegas_monitoring: Permission bigquery.datasets.get denied on dataset vz-it-np-ienv-test-vegsdo-0:vegas_monitoring (or it may not exist).
-
-Failed to initialize database analyzer: 403 GET https://bigquery.googleapis.com/bigquery/v2/projects/vz-it-np-ienv-test-vegsdo-0/datasets/vegas_monitoring?prettyPrint=false: Access Denied: Dataset vz-it-np-ienv-test-vegsdo-0:vegas_monitoring: Permission bigquery.datasets.get denied on dataset vz-it-np-ienv-test-vegsdo-0:vegas_monitoring (or it may not exist).
