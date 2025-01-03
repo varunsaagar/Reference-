@@ -163,3 +163,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+INFO:__main__:Processing query: what are the column names in api_status_monitoring table?
+WARNING:__main__:Attempt 1 failed: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
