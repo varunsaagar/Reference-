@@ -263,3 +263,43 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+###
+
+bq query --nouse_legacy_sql
+'SELECT * FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.api_status_monitoring LIMIT 10'
+
+this terminal comment able to query the table , so update the code accoridngly
+
+def llm_search(query):
+    """Queries a hosted LLM for general information. 
+    This functions sends a POST request to a hosted LLM with the 
+    user's query. The LLM processes the query and returns a 
+    response.
+    Args:
+        query (str): The user's query to be processed by the LLM.
+    Returns:
+        dict: A dictionary containing the LLM's response and it's status.
+    """
+    url = "https://oa-dev2.ebiz.verizon.com/vegas/apps/prompt/LLMInsight"
+    
+    payload = json.dumps({
+      "useCase": "agentic_workflow_as_service",
+      "contextId": "agentic_workflow_gemini15flash",
+      "preSeed_injection_map": {
+        "{INPUT}": query
+      },
+      "parameters": {
+        "temperature": 0.9,
+        "maxOutputTokens": 2048,
+        "topP": 1
+      }
+    })
+    headers = {
+      'Content-Type': 'application/json',
+      'X-apikey': 'rPGYBZzwHV9qXzHmvqu3IgmMGB2G6E5A'
+    }
+    
+    response = requests.request("POST", url, headers=headers, data=payload)
+    return {'response': json.loads(response.text)["prediction"], 'status_message': response}
