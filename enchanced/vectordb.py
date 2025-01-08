@@ -20,22 +20,32 @@ class VectorDatabase:
         
     def _init_vector_store(self):
         """Initialize BigQuery tables for vector store"""
-        # Create embeddings table if not exists
-        embedding_schema = [
-            bigquery.SchemaField("id", "STRING"),
-            bigquery.SchemaField("text", "STRING"),
-            bigquery.SchemaField(name="embedding",
-                                field_type="FLOAT64",
-                                mode="REPEATED"),
-            bigquery.SchemaField("metadata", "STRING")
-        ]
-        
-        table_id = f"{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.embeddings"
         try:
-            self.client.get_table(table_id)
-        except exceptions.NotFound:
-            table = bigquery.Table(table_id, schema=embedding_schema)
-            self.client.create_table(table)
+            # Create embeddings table if not exists
+            embedding_schema = [
+                bigquery.SchemaField(name="id", field_type="STRING"),
+                bigquery.SchemaField(name="text", field_type="STRING"),
+                bigquery.SchemaField(
+                    name="embedding",
+                    field_type="FLOAT64",
+                    mode="REPEATED"
+                ),
+                bigquery.SchemaField(name="metadata", field_type="STRING")
+            ]
+            
+            table_id = f"{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.embeddings"
+            try:
+                table = self.client.get_table(table_id)
+                print(f"✅ Using existing embeddings table: {table_id}")
+            except exceptions.NotFound:
+                table = bigquery.Table(table_id, schema=embedding_schema)
+                table = self.client.create_table(table)
+                print(f"✅ Created new embeddings table: {table_id}")
+                
+        except Exception as e:
+            print(f"❌ Error initializing vector store: {str(e)}")
+            raise
+
             
 # vectordb.py
 
@@ -80,40 +90,46 @@ class VectorDatabase:
     # vectordb.py
 
     def similarity_search(self, query_text: str, k: int = 5) -> List[Dict]:
-        """Find similar texts using cosine similarity in BigQuery"""
-        try:
-            query_embedding = self.generate_embedding(query_text)
+    """Find similar texts using cosine similarity in BigQuery"""
+    try:
+        query_embedding = self.generate_embedding(query_text)
+        if not query_embedding:
+            print("Warning: Generated empty embedding")
+            return []
             
-            similarity_query = f"""
-            WITH similarity AS (
-                SELECT 
-                    text,
-                    metadata,
-                    (
-                        SELECT SUM(a * b) / SQRT(SUM(a * a) * SUM(b * b))
-                        FROM UNNEST(embedding) a WITH OFFSET pos
-                        INNER JOIN UNNEST(@query_embedding) b WITH OFFSET pos
-                        USING(pos)
-                    ) as similarity_score
-                FROM `{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.embeddings`
-            )
-            SELECT *
-            FROM similarity
-            WHERE similarity_score > 0
-            ORDER BY similarity_score DESC
-            LIMIT @k
-            """
-            
-            job_config = bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ArrayQueryParameter("query_embedding", "FLOAT64", 
-                                               query_embedding),
-                    bigquery.ScalarQueryParameter("k", "INT64", k)
-                ]
-            )
-            
-            results = self.client.query(similarity_query, job_config=job_config).result()
-            return [dict(row) for row in results]
-        except Exception as e:
-            print(f"Warning: Similarity search failed: {str(e)}")
-            return []  # Return empty list instead of failing
+        similarity_query = f"""
+        WITH similarity AS (
+            SELECT 
+                text,
+                metadata,
+                (
+                    SELECT SUM(a * b) / SQRT(SUM(a * a) * SUM(b * b))
+                    FROM UNNEST(embedding) a WITH OFFSET pos
+                    INNER JOIN UNNEST(@query_embedding) b WITH OFFSET pos
+                    USING(pos)
+                ) as similarity_score
+            FROM `{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.embeddings`
+            WHERE embedding IS NOT NULL
+        )
+        SELECT *
+        FROM similarity
+        WHERE similarity_score > 0
+        ORDER BY similarity_score DESC
+        LIMIT @k
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ArrayQueryParameter("query_embedding", "FLOAT64", 
+                                           query_embedding),
+                bigquery.ScalarQueryParameter("k", "INT64", k)
+            ]
+        )
+        
+        results = self.client.query(similarity_query, job_config=job_config).result()
+        return [dict(row) for row in results]
+        
+    except Exception as e:
+        print(f"Error in similarity search: {str(e)}")
+        return []
+
