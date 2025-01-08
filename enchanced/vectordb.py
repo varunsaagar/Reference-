@@ -63,37 +63,43 @@ class VectorDatabase:
         
         self.client.query(query, job_config=job_config).result()
         
+    # vectordb.py
+
     def similarity_search(self, query_text: str, k: int = 5) -> List[Dict]:
         """Find similar texts using cosine similarity in BigQuery"""
-        query_embedding = self.generate_embedding(query_text)
-        
-        similarity_query = f"""
-        WITH similarity AS (
-            SELECT 
-                text,
-                metadata,
-                (
-                    SELECT SUM(a * b) / SQRT(SUM(a * a) * SUM(b * b))
-                    FROM UNNEST(embedding) a WITH OFFSET pos
-                    INNER JOIN UNNEST(@query_embedding) b WITH OFFSET pos
-                    USING(pos)
-                ) as similarity_score
-            FROM `{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.embeddings`
-        )
-        SELECT *
-        FROM similarity
-        WHERE similarity_score > 0
-        ORDER BY similarity_score DESC
-        LIMIT @k
-        """
-        
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ArrayQueryParameter("query_embedding", "FLOAT64", 
-                                           query_embedding),
-                bigquery.ScalarQueryParameter("k", "INT64", k)
-            ]
-        )
-        
-        results = self.client.query(similarity_query, job_config=job_config).result()
-        return [dict(row) for row in results]
+        try:
+            query_embedding = self.generate_embedding(query_text)
+            
+            similarity_query = f"""
+            WITH similarity AS (
+                SELECT 
+                    text,
+                    metadata,
+                    (
+                        SELECT SUM(a * b) / SQRT(SUM(a * a) * SUM(b * b))
+                        FROM UNNEST(embedding) a WITH OFFSET pos
+                        INNER JOIN UNNEST(@query_embedding) b WITH OFFSET pos
+                        USING(pos)
+                    ) as similarity_score
+                FROM `{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.embeddings`
+            )
+            SELECT *
+            FROM similarity
+            WHERE similarity_score > 0
+            ORDER BY similarity_score DESC
+            LIMIT @k
+            """
+            
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ArrayQueryParameter("query_embedding", "FLOAT64", 
+                                               query_embedding),
+                    bigquery.ScalarQueryParameter("k", "INT64", k)
+                ]
+            )
+            
+            results = self.client.query(similarity_query, job_config=job_config).result()
+            return [dict(row) for row in results]
+        except Exception as e:
+            print(f"Warning: Similarity search failed: {str(e)}")
+            return []  # Return empty list instead of failing
