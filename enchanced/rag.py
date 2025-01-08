@@ -50,17 +50,28 @@ class RAGPipeline:
         
         return response
         
+# rag.py
+
     def _get_relevant_context(self, query: str) -> Dict:
         """Get relevant context using vector similarity"""
-        similar_items = self.vector_db.similarity_search(query)
+        try:
+            similar_items = self.vector_db.similarity_search(query)
+        except Exception as e:
+            print(f"Warning: Vector similarity search failed: {str(e)}")
+            similar_items = []
         
-        # Extract table and column information
+    # Extract table and column information
+    try:
         tables_info = self._get_tables_info()
-        
-        return {
-            "similar_contexts": similar_items,
-            "tables_info": tables_info
-        }
+    except Exception as e:
+        print(f"Warning: Failed to get tables info: {str(e)}")
+        tables_info = {}
+    
+    return {
+        "similar_contexts": similar_items,
+        "tables_info": tables_info
+    }
+
         
     def _get_tables_info(self) -> Dict:
         """Get information about available tables"""
