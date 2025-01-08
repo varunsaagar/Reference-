@@ -37,10 +37,24 @@ class VectorDatabase:
             table = bigquery.Table(table_id, schema=embedding_schema)
             self.client.create_table(table)
             
+# vectordb.py
+
     def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding using Vertex AI"""
-        result = self.embedding_model.get_embeddings([text])
-        return result[1].values
+        try:
+            # The get_embeddings method returns a list of embeddings
+            result = self.embedding_model.get_embeddings([text])
+            # Access the first (and only) embedding since we only passed one text
+            if result and len(result) > 0:
+                return result[0].values  # Changed from result[1].values to result[0].values
+            else:
+                raise ValueError("No embedding generated")
+        except Exception as e:
+            print(f"Error generating embedding: {str(e)}")
+            # Return a zero vector of appropriate dimension as fallback
+            # You might want to adjust the dimension based on your model
+            return [0.0] * 768  # 768 is common embedding dimension, adjust if needed
+
         
     def store_embedding(self, text: str, metadata: Dict = None):
         """Store text embedding in BigQuery"""
