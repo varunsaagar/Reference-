@@ -11,6 +11,16 @@ BIGQUERY_PROJECT_ID = "vz-it-np-ienv-test-vegsdo-0"
 BIGQUERY_DATASET_ID = "vegas_monitoring"
 
 # Function declarations for BigQuery operations
+list_datasets_func = FunctionDeclaration(
+    name="list_datasets",
+    description="List available BigQuery datasets",
+    parameters={
+        "type": "object",
+        "properties": {},
+    },
+)
+
+# Function declarations for BigQuery operations
 list_tables_func = FunctionDeclaration(
     name="list_tables",
     description="List tables in a BigQuery dataset",
