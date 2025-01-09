@@ -5,30 +5,35 @@ import asyncio
 import aiohttp
 from pydantic import BaseModel
 
-class LLMParameters(BaseModel):
-    """The class represents LLM Parameters to be passed to vegas api."""
-    top_k: float = 1.0
-    top_p: float = 1.0
-    temperature: float = 0.9
-    max_output_tokens: int = 4096
+def clean_prompt(prompt):
+    """Clean the prompt string by removing trailing commas and whitespace."""
+    if isinstance(prompt, str):
+        return prompt.rstrip(',').strip()
+    return prompt
 
 async def vegas_async(session, prompt, request_number):
     """Asynchronously call Vegas API."""
     url = "https://vegas-llm-batch.verizon.com/vegas/apps/batch/prompt/LLMInsight"
     
-    # Fixed payload to match the working curl request structure
+    # Clean the prompt
+    cleaned_prompt = clean_prompt(prompt)
+    
     payload = {
         "useCase": "CALL_ANALYTICS_UI",
-        "contextId": "CALL_INTENT_TEST",  # Removed unnecessary suffix
+        "contextId": "CALL_INTENT_TEST",
         "preSeed_injection_map": {
-            "{INPUT}": prompt
+            "{INPUT}": cleaned_prompt
         },
         "parameters": {
             "temperature": 0.9,
-            "maxOutputTokens": 8192,  # Changed from max_output_tokens to maxOutputTokens
-            "topP": 1  # Changed from top_p to topP
+            "maxOutputTokens": 8192,
+            "topP": 1
         }
     }
+    
+    # Debug: Print the exact payload being sent
+    print(f"\nRequest {request_number} Payload:")
+    print(json.dumps(payload, indent=2))
     
     headers = {
         'Content-Type': 'application/json',
@@ -39,7 +44,8 @@ async def vegas_async(session, prompt, request_number):
         async with session.post(url, json=payload, headers=headers, ssl=False) as response:
             if response.status != 200:
                 error_text = await response.text()
-                print(f"Request {request_number} failed with status {response.status}: {error_text}")
+                print(f"\nRequest {request_number} failed with status {response.status}")
+                print(f"Error response: {error_text}")
                 return {'prediction': f"Error: Status {response.status}", 'index': request_number}
             
             response_data = await response.json()
@@ -56,6 +62,10 @@ async def process_batch(session, df, start_idx, batch_size):
         if start_idx + i >= len(df):
             break
         prompt = df.iloc[start_idx + i]['prompt']
+        # Debug: Print the prompt being processed
+        print(f"\nProcessing prompt at index {start_idx + i}:")
+        print(f"Original prompt: {prompt}")
+        print(f"Cleaned prompt: {clean_prompt(prompt)}")
         task = asyncio.create_task(
             vegas_async(session, prompt, start_idx + i)
         )
@@ -72,7 +82,7 @@ def run_async_requests_vegas(df, max_requests_per_minute):
             results = []
             
             for batch_start in range(0, len(df), max_requests_per_minute):
-                print(f"Processing batch starting at index {batch_start}")
+                print(f"\nProcessing batch starting at index {batch_start}")
                 batch_start_time = time.time()
                 
                 batch_results = await process_batch(
@@ -96,24 +106,21 @@ def run_async_requests_vegas(df, max_requests_per_minute):
 
 if __name__ == '__main__':
     file_name = "dummy.csv"
+    
+    # Read CSV and clean the data
+    print("\nReading and cleaning CSV file contents:")
     df = pd.read_csv(file_name)
+    df['prompt'] = df['prompt'].apply(clean_prompt)
+    print(df.head())
     
     if 'id' not in df.columns or 'prompt' not in df.columns:
         print("Error: CSV file must contain 'id' and 'prompt' columns")
         exit(1)
     
-    print(f"Processing {len(df)} requests...")
+    print(f"\nProcessing {len(df)} requests...")
     results = run_async_requests_vegas(df, 3)
     
     df['response'] = [r['prediction'] for r in results]
     
     df.to_csv(file_name, index=False)
-    print(f"Processed {len(results)} requests and saved results to {file_name}")
-
-id,prompt
-1,What is the capital of France?,
-2,Explain the theory of relativity.,
-3,How does a computer work,
-4,What are the benefits of exercise?,
-5,Describe the process of photosynthesis.
- 
+    print(f"\nProcessed {len(results)} requests and saved results to {file_name}")
