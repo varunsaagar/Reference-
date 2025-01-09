@@ -109,3 +109,11 @@ if __name__ == '__main__':
     
     df.to_csv(file_name, index=False)
     print(f"Processed {len(results)} requests and saved results to {file_name}")
+
+id,prompt
+1,What is the capital of France?,
+2,Explain the theory of relativity.,
+3,How does a computer work,
+4,What are the benefits of exercise?,
+5,Describe the process of photosynthesis.
+ 
