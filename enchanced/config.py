@@ -11,25 +11,19 @@ BIGQUERY_PROJECT_ID = "vz-it-np-ienv-test-vegsdo-0"
 BIGQUERY_DATASET_ID = "vegas_monitoring"
 
 # Function declarations for BigQuery operations
-list_datasets_func = FunctionDeclaration(
-    name="list_datasets",
-    description="List available BigQuery datasets",
-    parameters={
-        "type": "object",
-        "properties": {},
-    },
-)
-
 list_tables_func = FunctionDeclaration(
-    name="list_tables", 
+    name="list_tables",
     description="List tables in a BigQuery dataset",
     parameters={
         "type": "object",
         "properties": {
-            "dataset_id": {"type": "string"}
+            "dataset_id": {
+                "type": "string",
+                "description": "Dataset ID to fetch tables from"
+            }
         },
-        "required": ["dataset_id"],
-    },
+        "required": ["dataset_id"]
+    }
 )
 
 get_schema_func = FunctionDeclaration(
@@ -38,10 +32,13 @@ get_schema_func = FunctionDeclaration(
     parameters={
         "type": "object",
         "properties": {
-            "table_id": {"type": "string"}
+            "table_id": {
+                "type": "string",
+                "description": "Fully qualified table ID (project.dataset.table)"
+            }
         },
-        "required": ["table_id"],
-    },
+        "required": ["table_id"]
+    }
 )
 
 execute_query_func = FunctionDeclaration(
@@ -50,8 +47,11 @@ execute_query_func = FunctionDeclaration(
     parameters={
         "type": "object",
         "properties": {
-            "query": {"type": "string"}
+            "query": {
+                "type": "string",
+                "description": "SQL query to execute"
+            }
         },
-        "required": ["query"],
-    },
+        "required": ["query"]
+    }
 )
