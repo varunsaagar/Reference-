@@ -123,3 +123,8 @@ if __name__ == '__main__':
     # Save back to the same CSV file
     df.to_csv(file_name, index=False)
     print(f"Processed {len(responses)} requests and saved results to {file_name}")
+
+
+payload_dict = { "useCase":c_usecase, "contextId": context_id, "preSeed_injection_map": context, "parameters": parameters } if gemini_flash: payload_dict['transactionMetadata'] = {"clientId": "1234" } 
+
+this is the sample payload , api key is not required since endpoint is not authenticaked and open fix the issue # api_key = 'ehG4iYbAcujzXjP6AXG2GAhq2heMR7wS' payload = json.dumps(payload_dict) headers = { 'Content-Type': 'application/json', 'X-apikey': api_key }
