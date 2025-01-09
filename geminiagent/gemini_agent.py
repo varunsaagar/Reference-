@@ -1,5 +1,46 @@
 
+(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
+Iteration: 1
+Initial response: content {
+  role: "model"
+  parts {
+    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (eccr_dept_nm = \'Technical Support\' OR script_nm LIKE \'%Technical Support%\' OR acd_area_nm LIKE \'%Technical Support%\' OR bus_rule LIKE \'%Technical Support%\' OR super_bus_rule LIKE \'%Technical Support%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n```\n"
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.012768606185913085
 
+Extracted SQL Query (before processing): 
+Error handling function call: name 'FunctionCall' is not defined
+Iteration: 2
+Traceback (most recent call last):
+  File "/mnt/geminiagent/main.py", line 44, in <module>
+    main()
+  File "/mnt/geminiagent/main.py", line 39, in main
+    final_response = agent.process_query(formatted_query)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/geminiagent/gemini_agent.py", line 354, in process_query
+    response = self.chat.send_message(sql_prompt)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 1257, in send_message
+    return self._send_message(
+           ^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 1386, in _send_message
+    response = self._model._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 771, in _generate_content
+    request = self._prepare_request(
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 3201, in _prepare_request
+    request_v1beta1 = super()._prepare_request(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 506, in _prepare_request
+    _validate_generate_content_parameters(
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 169, in _validate_generate_content_parameters
+    _validate_contents_type_as_valid_sequence(contents)
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 214, in _validate_contents_type_as_valid_sequence
+    raise TypeError(
+TypeError: When passing a list with Content objects, every item in a list must be a Content object.
 # gemini_agent.py
 import vertexai
 from vertexai.generative_models import (
