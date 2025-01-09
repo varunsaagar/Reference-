@@ -1,3 +1,62 @@
+✅ Successfully connected to BigQuery
+   Project: vz-it-np-ienv-test-vegsdo-0
+   Dataset: vegas_monitoring
+
+Available tables (3):
+   • api_status_monitoring
+   • embeddings
+   • icm_summary_fact_exp
+
+Processing query...
+
+Function called: list_datasets
+Parameters: {}
+Response: vegas_monitoring
+
+Function called: list_tables
+Parameters: {'dataset_id': 'vegas_monitoring'}
+Response: ['api_status_monitoring', 'embeddings', 'icm_summary_fact_exp']
+
+Function called: get_table
+Parameters: {'table_id': 'vegas_monitoring.icm_summary_fact_exp'}
+Response: {'description': "Customer call related information with IVR agent's details. This table contains metrics related to Enterprise Call Center Reporting (ECCR) interactions. It provides information on call center performance, including local queue time, hold time, and delay time.", 'schema': ['recoverykey', 'ivr_call_id', 'acd_area_nm', 'call_end_dt', 'call_end_tm', 'call_answer_tm', 'route_value', 'icm_acct_type_cd', 'eqp_prod_id', 'cust_value', 'lang_pref_ind', 'cacs_state_cd', 'first_bill_cd', 'onstar_ind', 'transfer_point', 'onebill_ind', 'high_risk_ind', 'cacs_work_state_cd', 'ivr_cust_src_cd', 'bus_rule', 'script_nm', 'eccr_line_bus_nm', 'eccr_super_line_bus_nm', 'eccr_dept_nm', 'mtn', 'eccr_call_ctr_cd', 'acd_appl_id', 'agent_group_id', 'callers_region', 'transfer_flag', 'final_call_dispo', 'call_dispo_flag', 'peripheral_call_type', 'final_object_id', 'call_duration_seconds', 'ring_tm_seconds', 'delay_tm_seconds', 'time_to_aband_seconds', 'hold_tm_seconds', 'talk_tm_seconds', 'work_tm_seconds', 'local_q_tm_seconds', 'handle_tm_seconds', 'delay_answer_seconds', 'call_offered_cnt', 'answer_half_hr', 'abandons_cnt', 'answered_cnt', 'ansr_30_cnt', 'ansr_30_to_40_cnt', 'tm_zone_offset', 'callcenterid', 'sor_id', 'cust_id', 'cust_line_seq_id', 'acss_call_id', 'callcenterid_agent', 'acd_area_nm_agent', 'eccr_line_bus_nm_agent', 'eccr_dept_nm_agent', 'rep_type_cd', 'ecc_sm_ind', 'eid', 'call_answer_dt', 'routercallkeyday', 'routercallkey', 'super_bus_rule', 'super_skill_group', 'super_call_type_cd', 'dev_cat_cd', 'hpr_cd', 'specialization_cd', 'client_channel_cd', 'client_application_cd', 'call_status', 'call_reas_cd', 'orig_ivr_call_id']}
+
+Function called: sql_query
+Parameters: {'query': "SELECT count(DISTINCT cust_id) FROM vegas_monitoring.icm_summary_fact_exp WHERE call_answer_dt = '2024-06-01' AND cust_id NOT IN (SELECT DISTINCT cust_id FROM vegas_monitoring.icm_summary_fact_exp WHERE call_answer_dt BETWEEN '2024-05-02' AND '2024-06-01')"}
+Response: [{'f0_': 0}]
+
+Response: On Jun 1st, there were 0 first-time callers who had not called in the last 30 days.
+
+The data comes from the `vegas_monitoring.icm_summary_fact_exp` table, which contains customer call information. The query counts distinct customer IDs (`cust_id`) where the call answer date (`call_answer_dt`) is '2024-06-01' and the customer ID does not exist in the set of distinct customer IDs with call answer dates between '2024-05-02' and '2024-06-01'.
+
+
+Successfully connected to BigQuery
+   Project: vz-it-np-ienv-test-vegsdo-0
+   Dataset: vegas_monitoring
+
+Available tables (3):
+   • api_status_monitoring
+   • embeddings
+   • icm_summary_fact_exp
+
+Processing query...
+
+Function called: list_datasets
+Parameters: {}
+Response: vegas_monitoring
+
+Function called: list_tables
+Parameters: {'dataset_id': 'vegas_monitoring'}
+Response: ['api_status_monitoring', 'embeddings', 'icm_summary_fact_exp']
+
+Function called: get_table
+Parameters: {'table_id': 'vegas_monitoring.icm_summary_fact_exp'}
+Response: {'description': "Customer call related information with IVR agent's details. This table contains metrics related to Enterprise Call Center Reporting (ECCR) interactions. It provides information on call center performance, including local queue time, hold time, and delay time.", 'schema': ['recoverykey', 'ivr_call_id', 'acd_area_nm', 'call_end_dt', 'call_end_tm', 'call_answer_tm', 'route_value', 'icm_acct_type_cd', 'eqp_prod_id', 'cust_value', 'lang_pref_ind', 'cacs_state_cd', 'first_bill_cd', 'onstar_ind', 'transfer_point', 'onebill_ind', 'high_risk_ind', 'cacs_work_state_cd', 'ivr_cust_src_cd', 'bus_rule', 'script_nm', 'eccr_line_bus_nm', 'eccr_super_line_bus_nm', 'eccr_dept_nm', 'mtn', 'eccr_call_ctr_cd', 'acd_appl_id', 'agent_group_id', 'callers_region', 'transfer_flag', 'final_call_dispo', 'call_dispo_flag', 'peripheral_call_type', 'final_object_id', 'call_duration_seconds', 'ring_tm_seconds', 'delay_tm_seconds', 'time_to_aband_seconds', 'hold_tm_seconds', 'talk_tm_seconds', 'work_tm_seconds', 'local_q_tm_seconds', 'handle_tm_seconds', 'delay_answer_seconds', 'call_offered_cnt', 'answer_half_hr', 'abandons_cnt', 'answered_cnt', 'ansr_30_cnt', 'ansr_30_to_40_cnt', 'tm_zone_offset', 'callcenterid', 'sor_id', 'cust_id', 'cust_line_seq_id', 'acss_call_id', 'callcenterid_agent', 'acd_area_nm_agent', 'eccr_line_bus_nm_agent', 'eccr_dept_nm_agent', 'rep_type_cd', 'ecc_sm_ind', 'eid', 'call_answer_dt', 'routercallkeyday', 'routercallkey', 'super_bus_rule', 'super_skill_group', 'super_call_type_cd', 'dev_cat_cd', 'hpr_cd', 'specialization_cd', 'client_channel_cd', 'client_application_cd', 'call_status', 'call_reas_cd', 'orig_ivr_call_id']}
+
+Response: ```sql
+SELECT count(DISTINCT cust_id) FROM vegas_monitoring.icm_summary_fact_exp WHERE substr(CAST(call_answer_dt as STRING), 1, 7) = '2023-06' AND cust_id NOT IN (SELECT DISTINCT cust_id FROM vegas_monitoring.icm_summary_fact_exp WHERE call_answer_dt BETWEEN DATE('2023-06-01') - INTERVAL '30' DAY AND DATE('2023-06-01') - INTERVAL '1' DAY)
+```
+
 import time
 from google.cloud import bigquery
 from google.api_core import exceptions
