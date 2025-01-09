@@ -1,4 +1,3 @@
-
 import json
 import time
 import pandas as pd
@@ -21,10 +20,7 @@ def parse_response_string(response):
             return "No prediction found"
             
         prediction = prediction.strip()
-        prediction = prediction.replace("```
-json", "").replace("
-
-        
+        prediction = prediction.replace("```json", "").replace("```")
         if prediction.startswith('{{') and prediction.endswith('}}'):
             prediction = prediction[1:-1].strip()
             
@@ -37,7 +33,7 @@ async def vegas_async(session, prompt, request_number):
     """Asynchronously call Vegas API."""
     url = "https://vegas-llm-batch.verizon.com/vegas/apps/batch/prompt/LLMInsight"
     
-    payload = {
+    payload_dict = {
         "useCase": "CALL_ANALYTICS_UI",
         "contextId": "CALL_INTENT_TEST",
         "preSeed_injection_map": {
@@ -53,8 +49,11 @@ async def vegas_async(session, prompt, request_number):
     
     headers = {'Content-Type': 'application/json'}
     
+    print(f"Request {request_number} payload: {json.dumps(payload_dict, indent=2)}")
+    print(f"Request {request_number} headers: {headers}")
+    
     try:
-        async with session.post(url, json=payload, headers=headers, ssl=False) as response:
+        async with session.post(url, json=payload_dict, headers=headers, ssl=False) as response:
             if response.status != 200:
                 print(f"Request {request_number} failed with status {response.status}")
                 return {'prediction': f"Error: Status {response.status}", 'index': request_number}
@@ -115,7 +114,7 @@ if __name__ == '__main__':
     df = pd.read_csv(file_name)
     
     # Process the requests and get responses
-    responses = run_async_requests_vegas(df, 10)
+    responses = run_async_requests_vegas(df, 3)
     
     # Add responses to the DataFrame
     df['response'] = responses
@@ -127,4 +126,82 @@ if __name__ == '__main__':
 
 payload_dict = { "useCase":c_usecase, "contextId": context_id, "preSeed_injection_map": context, "parameters": parameters } if gemini_flash: payload_dict['transactionMetadata'] = {"clientId": "1234" } 
 
-this is the sample payload , api key is not required since endpoint is not authenticaked and open fix the issue # api_key = 'ehG4iYbAcujzXjP6AXG2GAhq2heMR7wS' payload = json.dumps(payload_dict) headers = { 'Content-Type': 'application/json', 'X-apikey': api_key }
+this is the sample payload , api key is not required since endpoint is not authenticaked and open fix the issue 
+
+(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q async_test]$ python3 run_aync.py 
+Request 0 payload: {
+  "useCase": "CALL_ANALYTICS_UI",
+  "contextId": "CALL_INTENT_TEST",
+  "preSeed_injection_map": {
+    "{INPUT}": NaN
+  },
+  "parameters": {
+    "temperature": 0.9,
+    "maxOutputTokens": 4096,
+    "topP": 1,
+    "topK": 1
+  }
+}
+Request 0 headers: {'Content-Type': 'application/json'}
+Request 1 payload: {
+  "useCase": "CALL_ANALYTICS_UI",
+  "contextId": "CALL_INTENT_TEST",
+  "preSeed_injection_map": {
+    "{INPUT}": NaN
+  },
+  "parameters": {
+    "temperature": 0.9,
+    "maxOutputTokens": 4096,
+    "topP": 1,
+    "topK": 1
+  }
+}
+Request 1 headers: {'Content-Type': 'application/json'}
+Request 2 payload: {
+  "useCase": "CALL_ANALYTICS_UI",
+  "contextId": "CALL_INTENT_TEST",
+  "preSeed_injection_map": {
+    "{INPUT}": NaN
+  },
+  "parameters": {
+    "temperature": 0.9,
+    "maxOutputTokens": 4096,
+    "topP": 1,
+    "topK": 1
+  }
+}
+Request 2 headers: {'Content-Type': 'application/json'}
+Request 2 failed with status 400
+Request 1 failed with status 400
+Request 0 failed with status 400
+Request 3 payload: {
+  "useCase": "CALL_ANALYTICS_UI",
+  "contextId": "CALL_INTENT_TEST",
+  "preSeed_injection_map": {
+    "{INPUT}": NaN
+  },
+  "parameters": {
+    "temperature": 0.9,
+    "maxOutputTokens": 4096,
+    "topP": 1,
+    "topK": 1
+  }
+}
+Request 3 headers: {'Content-Type': 'application/json'}
+Request 4 payload: {
+  "useCase": "CALL_ANALYTICS_UI",
+  "contextId": "CALL_INTENT_TEST",
+  "preSeed_injection_map": {
+    "{INPUT}": NaN
+  },
+  "parameters": {
+    "temperature": 0.9,
+    "maxOutputTokens": 4096,
+    "topP": 1,
+    "topK": 1
+  }
+}
+Request 4 headers: {'Content-Type': 'application/json'}
+Request 4 failed with status 400
+Request 3 failed with status 400
+Processed 5 requests and saved results to dummy.csv# api_key = 'ehG4iYbAcujzXjP6AXG2GAhq2heMR7wS' payload = json.dumps(payload_dict) headers = { 'Content-Type': 'application/json', 'X-apikey': api_key }
