@@ -12,6 +12,12 @@ class LLMParameters(BaseModel):
     temperature: float = 0.9
     max_output_tokens: int = 4096
 
+def clean_prompt(prompt):
+    """Clean and validate the prompt."""
+    if pd.isna(prompt):
+        return ""
+    return str(prompt).strip()
+
 def parse_response_string(response):
     """Parse and clean the Vegas API response."""
     try:
@@ -22,11 +28,9 @@ def parse_response_string(response):
         if not prediction:
             return "Empty prediction"
             
-        prediction = prediction.strip()
-        prediction = prediction.replace("```json", "").replace("```")
-        if prediction.startswith('{{') and prediction.endswith('}}'):
-            prediction = prediction[1:-1].strip()
-            
+        prediction = str(prediction).strip()
+        preduction
+        
         return prediction
     except Exception as ex:
         print(f"Error parsing response: {ex}")
@@ -36,11 +40,16 @@ async def vegas_async(session, prompt, request_number):
     """Asynchronously call Vegas API."""
     url = "https://vegas-llm-batch.verizon.com/vegas/apps/batch/prompt/LLMInsight"
     
+    # Clean and validate prompt
+    cleaned_prompt = clean_prompt(prompt)
+    if not cleaned_prompt:
+        return {'prediction': "Empty prompt", 'index': request_number}
+    
     payload = {
         "useCase": "LLM_EVALUATION_FRAMEWORK",
         "contextId": "BILLING_SLM_EVAL",
-        "context": {
-            "Question": prompt
+        "preSeed_injection_map": {
+            "{INPUT}": cleaned_prompt
         },
         "parameters": {
             "temperature": 0.9,
@@ -61,10 +70,10 @@ async def vegas_async(session, prompt, request_number):
                 error_text = await response.text()
                 print(f"Request {request_number} failed with status {response.status}: {error_text}")
                 return {'prediction': f"Error: Status {response.status}", 'index': request_number}
-            
-            # Make sure to read the response data
+                
             response_data = await response.json()
-            return {'prediction': response_data, 'index': request_number}
+            parsed_response = parse_response_string(response_data)
+            return {'prediction': parsed_response, 'index': request_number}
             
     except Exception as ex:
         print(f"Request {request_number} failed with error: {ex}")
@@ -86,7 +95,6 @@ async def process_batch(session, df, start_idx, batch_size):
 def run_async_requests_vegas(df, max_requests_per_minute):
     """Run async requests with rate limiting and save results."""
     async def process_requests():
-        # Configure timeout and connector
         timeout = aiohttp.ClientTimeout(total=300)  # 5 minutes timeout
         connector = aiohttp.TCPConnector(ssl=False, limit=max_requests_per_minute)
         
@@ -118,38 +126,29 @@ def run_async_requests_vegas(df, max_requests_per_minute):
     return asyncio.run(process_requests())
 
 if __name__ == '__main__':
-    # Read the CSV file
-    file_name = "dummy.csv"
-    df = pd.read_csv(file_name)
-    
-    if 'id' not in df.columns or 'prompt' not in df.columns:
-        print("Error: CSV file must contain 'id' and 'prompt' columns")
-        exit(1)
-    
-    print(f"Processing {len(df)} requests...")
-    results = run_async_requests_vegas(df, 3)  # Reduced batch size to 3 for better control
-    
-    # Add responses to the DataFrame
-    df['response'] = [r['prediction'] for r in results]
-    
-    # Save back to the same CSV file
-    df.to_csv(file_name, index=False)
-    print(f"Processed {len(results)} requests and saved results to {file_name}")
-
-
-Processing 5 requests...
-Processing batch starting at index 0
-Request 2 failed with status 400: {"vegasTransactionId":"02b7d70c-fe07-4110-8d87-bc0b30bc752b","errorCode":"BAD_REQUEST","message":"Invalid request payload.","statusCode":400,"statusName":"BAD_REQUEST","path":"/vegas/apps/batch/prompt/LLMInsight","method":"POST","timestamp":"2025-01-09T10:53:27.393012663"}
-Request 0 failed with status 400: {"vegasTransactionId":"c0ff7d7d-d31d-4b82-95a2-2d5062f24421","errorCode":"BAD_REQUEST","message":"Invalid request payload.","statusCode":400,"statusName":"BAD_REQUEST","path":"/vegas/apps/batch/prompt/LLMInsight","method":"POST","timestamp":"2025-01-09T10:53:27.417467606"}
-Request 1 failed with status 400: {"vegasTransactionId":"efcaf07d-4289-4acc-b48f-f392be0c9671","errorCode":"BAD_REQUEST","message":"Invalid request payload.","statusCode":400,"statusName":"BAD_REQUEST","path":"/vegas/apps/batch/prompt/LLMInsight","method":"POST","timestamp":"2025-01-09T10:53:27.42059237"}
-Rate limiting: waiting 59.67 seconds
-
-input data
-
-id,prompt
-1,What is the capital of France?,
-2,Explain the theory of relativity.,
-3,How does a computer work,
-4,What are the benefits of exercise?,
-5,Describe the process of photosynthesis.
- 
+    try:
+        # Read the CSV file
+        file_name = "dummy.csv"
+        df = pd.read_csv(file_name)
+        
+        # Validate DataFrame
+        required_columns = ['id', 'prompt']
+        if not all(col in df.columns for col in required_columns):
+            raise ValueError(f"CSV must contain columns: {required_columns}")
+        
+        # Clean data
+        df['prompt'] = df['prompt'].fillna("")
+        df['prompt'] = df['prompt'].astype(str).str.strip()
+        
+        print(f"Processing {len(df)} requests...")
+        results = run_async_requests_vegas(df, 3)  # Reduced batch size to 3 for better control
+        
+        # Add responses to the DataFrame
+        df['response'] = [r['prediction'] for r in results]
+        
+        # Save back to the same CSV file
+        df.to_csv(file_name, index=False)
+        print(f"Processed {len(results)} requests and saved results to {file_name}")
+        
+    except Exception as e:
+        print(f"Error processing requests: {str(e)}")
