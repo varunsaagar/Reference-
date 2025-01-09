@@ -1,58 +1,4 @@
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm = \'Technical Support\' OR script_nm = \'Technical Support\' OR eccr_dept_nm = \'Technical Support\' OR bus_rule = \'Technical Support\' OR super_bus_rule = \'Technical Support\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0053980612173313049
 
-Extracted SQL Query (before processing): SELECT AVG(call_duration_seconds) FROM
-Extracted SQL Query (before processing): SELECT AVG(call_duration_seconds) FROM
-Error executing query: 400 Syntax error: Unexpected end of script at [1:39]; reason: invalidQuery, location: query, message: Syntax error: Unexpected end of script at [1:39]
-
-Location: US
-Job ID: 1ec19e0d-3b2a-43bb-aa5f-f2ef7ebe9845
-
-Query results: None
-Iteration: 2
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm LIKE \'%Technical Support%\' OR script_nm LIKE \'%Technical Support%\' OR eccr_dept_nm LIKE \'%Technical Support%\' OR bus_rule LIKE \'%Technical Support%\' OR CAST(super_bus_rule as STRING) LIKE \'%Technical Support%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0014040236787278523
-
-Extracted SQL Query (before processing): SELECT AVG(call_duration_seconds) FROM
-Extracted SQL Query (before processing): SELECT AVG(call_duration_seconds) FROM
-Error executing query: 400 Syntax error: Unexpected end of script at [1:39]; reason: invalidQuery, location: query, message: Syntax error: Unexpected end of script at [1:39]
-
-Location: US
-Job ID: 12dc7a84-8aff-4afd-9d01-e2bb5c93dba8
-
-Query results: None
-Iteration: 3
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (lower(acd_area_nm) LIKE \'%technical support%\' OR lower(script_nm) LIKE \'%technical support%\' OR lower(eccr_dept_nm) LIKE \'%technical support%\' OR lower(bus_rule) LIKE \'%technical support%\' OR CAST(super_bus_rule as STRING) LIKE \'%technical support%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n\n\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0055909127208358007
-
-Extracted SQL Query (before processing): SELECT AVG(call_duration_seconds) FROM
-Extracted SQL Query (before processing): SELECT AVG(call_duration_seconds) FROM
-Error executing query: 400 Syntax error: Unexpected end of script at [1:39]; reason: invalidQuery, location: query, message: Syntax error: Unexpected end of script at [1:39]
-
-Location: US
-Job ID: e560cf30-d3ba-486d-adfc-b1ba15b91caf
-
-Query results: None
-Final Response: Query executed successfully but returned no results.
 
 import vertexai
 from vertexai.generative_models import (
@@ -377,7 +323,7 @@ class GeminiAgent:
         beginning and ending triple backticks if they are part of a code block.
         """
         # Updated regex to correctly capture SQL query within triple backticks
-        match = re.search(r"`sql\s*(.*?)\s*`", response_text, re.DOTALL)
+        match = re.search(r"```sql\s*(.*?)\s*```", response_text, re.DOTALL)
         if match:
             sql_query = match.group(1).strip()
             print(f"Extracted SQL Query (before processing): {sql_query}")
@@ -386,7 +332,7 @@ class GeminiAgent:
             print(f"No SQL query found in response: {response_text}")
             return ""
 
-    def process_query(self, user_query: str, max_iterations: int = 3) -> str:
+    def process_query(self, user_query: str, max_iterations: int = 5) -> str:
         """Processes the user query with iterative error correction."""
         intent = self._extract_intent(user_query)
         extracted_entities = self._extract_entities(user_query)
