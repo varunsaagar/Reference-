@@ -352,7 +352,7 @@ class GeminiAgent:
             response = self.chat.send_message(sql_prompt)
             print(f"Initial response: {response.candidates[0]}")
 
-            while response.candidates[0].finish_reason == "TOOL":
+            while response.candidates[0.finish_reason == "TOOL":
                 print(f"Function called in loop : {response.candidates[0].finish_reason}")
                 function_response = self._handle_function_call(response.candidates[0].content.parts[0])
                 response = self.chat.send_message(function_response)
@@ -362,15 +362,52 @@ class GeminiAgent:
                 # Extract SQL query, removing backticks
                 sql_query = self._extract_sql_query(response.candidates[0].content.parts[0].text)
 
-                # Execute the SQL query and check for errors
+                # Simulate a function call response for execute_sql_query
+                simulated_function_call = Part.from_function_call(
+                    FunctionCall(
+                        name="execute_sql_query",
+                        args={"sql_query": sql_query},
+                    )
+                )
+                
+                # Handle the simulated function call
                 try:
-                    print(f"Generated SQL Query: {sql_query}")
-                    query_results = self.bq_manager.execute_query(sql_query)
+                    function_response = self._handle_function_call(simulated_function_call)
 
-                    # If query execution is successful, return the results
-                    return str(query_results)
+                    # Check if the function call was successful and returned results
+                    if function_response.function_response.name == "execute_sql_query":
+                        # Parse the results from the string representation
+                        results_str = function_response.function_response.content["content"]
+
+                        # Assuming results are a list of dicts, remove the leading/trailing brackets and split into dicts
+                        results_str = results_str.strip("[]")  # Remove leading/trailing brackets
+                        if results_str:
+                            result_dicts = results_str.split("}, ")  # Split into individual dict strings
+                            results = []
+                            for i, result_dict in enumerate(result_dicts):
+                                result_dict = result_dict.replace(" ", "")
+                                if i < len(result_dicts) - 1:
+                                    result_dict += "}"  # Add back the closing brace for all but the last dict
+                                try:
+                                    # Parse each dict string into a dictionary
+                                    result_dict = eval(result_dict)
+                                    results.append(result_dict)
+                                except Exception as e:
+                                    print(f"Error parsing result dict: {e}")
+                                    return f"Error parsing query results: {e}"
+                            # If query execution and parsing is successful, return the results
+                            return str(results)
+                        else:
+                            return "Query executed successfully, but returned no results."
+                    else:
+                        error_message = function_response.function_response.content["content"]
+                        print(error_message)
+                        # Update the chat history with the error for the next iteration
+                        self.chat.history.append(Part.from_text(f"Error: {error_message}"))
+                        self.chat.history.append(Part.from_text(f"Please provide the corrected SQL query for: {user_query}"))
+
                 except Exception as e:
-                    error_message = f"Error executing query: {e}"
+                    error_message = f"Error handling function call: {e}"
                     print(error_message)
 
                     # Update the chat history with the error for the next iteration
