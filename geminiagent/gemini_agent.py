@@ -1,3 +1,12 @@
+(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
+Traceback (most recent call last):
+  File "/mnt/geminiagent/main.py", line 2, in <module>
+    from gemini_agent import GeminiAgent
+  File "/mnt/geminiagent/gemini_agent.py", line 355
+    while response.candidates[0.finish_reason == "TOOL":
+                               ^
+SyntaxError: invalid decimal literal
+
 # gemini_agent.py
 import vertexai
 from vertexai.generative_models import (
