@@ -111,14 +111,35 @@ class GeminiAgent:
             },
         )
 
+        self.get_distinct_values_func = FunctionDeclaration(
+            name="get_distinct_column_values",
+            description="Get a sample of distinct values from a specified column in the table.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "description": "The name of the column to get distinct values from.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "The maximum number of distinct values to return.",
+                        "default": 10,
+                    },
+                },
+                "required": ["column_name"],
+            },
+        )
+
         # Create the tool that includes the function declarations
         self.bq_tool = Tool(
             function_declarations=[
                 self.get_table_schema_func,
                 self.execute_sql_query_func,
+                self.get_distinct_values_func,  # Add the new function
             ],
         )
-
+        
         # Initialize the Gemini model
         self.model = GenerativeModel(
             "gemini-1.5-pro-002",
@@ -219,6 +240,7 @@ class GeminiAgent:
         - If a question is ambiguous, generate the most likely interpretation.
         - Make sure to add single quotes around the string values.
         - Dont add any extra information in the response apart from SQL query.
+        - If you need to know the possible values in a column, use the `get_distinct_column_values` function to get a sample of distinct values.
 
         """
 
@@ -234,6 +256,7 @@ class GeminiAgent:
             """
 
         return prompt
+
 
     def _handle_function_call(self, response: Part) -> Part:
         """Handles function calls from the model."""
@@ -263,6 +286,26 @@ class GeminiAgent:
                 )
             except Exception as e:
                 error_message = f"Error executing query: {e}"
+                function_response = Part.from_function_response(
+                    name=function_name, response={"content": error_message}
+                )
+        elif function_name == "get_distinct_column_values":
+            # Handle the new function call to get distinct values
+            arguments = dict(response.function_call.args)
+            column_name = arguments["column_name"]
+            limit = arguments.get("limit", 10)  # Default limit is 10
+            print(f"Getting distinct values for column: {column_name} (limit: {limit})")
+
+            try:
+                distinct_values = self.bq_manager.get_distinct_values(column_name, limit)
+                function_response = Part.from_function_response(
+                    name=function_name,
+                    response={
+                        "content": str(distinct_values),
+                    },
+                )
+            except Exception as e:
+                error_message = f"Error getting distinct values: {e}"
                 function_response = Part.from_function_response(
                     name=function_name, response={"content": error_message}
                 )
