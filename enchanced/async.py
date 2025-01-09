@@ -135,3 +135,12 @@ if __name__ == '__main__':
     # Save back to the same CSV file
     df.to_csv(file_name, index=False)
     print(f"Processed {len(results)} requests and saved results to {file_name}")
+
+
+Processing 5 requests...
+Processing batch starting at index 0
+Request 2 failed with status 400: {"vegasTransactionId":"02b7d70c-fe07-4110-8d87-bc0b30bc752b","errorCode":"BAD_REQUEST","message":"Invalid request payload.","statusCode":400,"statusName":"BAD_REQUEST","path":"/vegas/apps/batch/prompt/LLMInsight","method":"POST","timestamp":"2025-01-09T10:53:27.393012663"}
+Request 0 failed with status 400: {"vegasTransactionId":"c0ff7d7d-d31d-4b82-95a2-2d5062f24421","errorCode":"BAD_REQUEST","message":"Invalid request payload.","statusCode":400,"statusName":"BAD_REQUEST","path":"/vegas/apps/batch/prompt/LLMInsight","method":"POST","timestamp":"2025-01-09T10:53:27.417467606"}
+Request 1 failed with status 400: {"vegasTransactionId":"efcaf07d-4289-4acc-b48f-f392be0c9671","errorCode":"BAD_REQUEST","message":"Invalid request payload.","statusCode":400,"statusName":"BAD_REQUEST","path":"/vegas/apps/batch/prompt/LLMInsight","method":"POST","timestamp":"2025-01-09T10:53:27.42059237"}
+Rate limiting: waiting 59.67 seconds
+
