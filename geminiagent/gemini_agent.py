@@ -1,60 +1,3 @@
-teration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm LIKE \'%Tech%\' OR script_nm LIKE \'%Tech%\' OR eccr_dept_nm LIKE \'%Tech%\' OR bus_rule LIKE \'%Tech%\' OR CAST(super_bus_rule as STRING) LIKE \'%Tech%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.013824465774720716
-
-Extracted SQL Query (before processing): 
-Extracted SQL Query (before processing): 
-Error executing query: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/vz-it-np-ienv-test-vegsdo-0/jobs?prettyPrint=false: Required parameter is missing: query
-
-Location: None
-Job ID: 4260cf33-2bc6-48fa-896d-e969832c01c7
-
-Query results: None
-Iteration: 2
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm LIKE \'%Tech%\' OR script_nm LIKE \'%Tech%\' OR eccr_dept_nm LIKE \'%Tech%\' OR bus_rule LIKE \'%Tech%\' OR CAST(super_bus_rule as STRING) LIKE \'%Tech%\') AND DATE(call_end_dt) = DATE(\'2023-04-13\')\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.016644481689699234
-
-Extracted SQL Query (before processing): 
-Extracted SQL Query (before processing): 
-Error executing query: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/vz-it-np-ienv-test-vegsdo-0/jobs?prettyPrint=false: Required parameter is missing: query
-
-Location: None
-Job ID: b5c06041-eeb9-4036-92a3-7ccfe440f471
-
-Query results: None
-Iteration: 3
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (lower(acd_area_nm) LIKE \'%tech%\' OR lower(script_nm) LIKE \'%tech%\' OR lower(eccr_dept_nm) LIKE \'%tech%\' OR lower(bus_rule) LIKE \'%tech%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0051895493318226708
-
-Extracted SQL Query (before processing): 
-Extracted SQL Query (before processing): 
-Error executing query: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/vz-it-np-ienv-test-vegsdo-0/jobs?prettyPrint=false: Required parameter is missing: query
-
-Location: None
-Job ID: cdff8e61-4ca5-4574-890a-5d994fc4609c
-
-Query results: None
-Final Response: Query executed successfully but returned no results.
-
-
 
 
 import vertexai
@@ -377,12 +320,12 @@ class GeminiAgent:
     def _extract_sql_query(self, response_text: str) -> str:
         """
         Extracts the SQL query from the response text, removing only the
-        beginning and ending backticks if they are part of a code block.
+        beginning and ending triple backticks if they are part of a code block.
         """
-        # Improved regex to correctly capture the SQL query within backticks
-        match = re.search(r"`(sql)?(.*?)`", response_text, re.DOTALL)
+        # Updated regex to correctly capture SQL query within triple backticks
+        match = re.search(r"`sql\s*(.*?)\s*`", response_text, re.DOTALL)
         if match:
-            sql_query = match.group(2).strip()
+            sql_query = match.group(1).strip()
             print(f"Extracted SQL Query (before processing): {sql_query}")
             return sql_query
         else:
@@ -414,7 +357,7 @@ class GeminiAgent:
             if response.candidates[0].content.parts[0].text:
                 # Extract SQL query, removing backticks
                 sql_query = self._extract_sql_query(response.candidates[0].content.parts[0].text)
-                print(f"Extracted SQL Query (before processing): {sql_query}")
+                print(f"Extracted SQL Query (before processing): {sql_query}") # Keep only one print statement
 
                 # Directly execute the SQL query
                 try:
