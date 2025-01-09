@@ -1,4 +1,6 @@
-
+Error getting context: 'NoneType' object has no attribute 'args'
+Error generating SQL: 'NoneType' object has no attribute 'args'
+Resposne: The query returned a constant value of 1. This does not provide information about the number of first-time callers on June 1st who did not call in the last 30 days. The SQL query needs to be adjusted to calculate the desired result from the relevant data.
 ###############################################################################
 # RAG PIPELINE
 ###############################################################################
