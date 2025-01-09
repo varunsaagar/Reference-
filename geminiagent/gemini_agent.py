@@ -1,4 +1,27 @@
 
+(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
+Iteration: 1
+Initial response: content {
+  role: "model"
+  parts {
+    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (eccr_dept_nm = \'Technical Support\' OR acd_area_nm = \'Technical Support\' OR script_nm = \'Technical Support\' OR bus_rule = \'Technical Support\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n```\n"
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.0021866628554015033
+
+Generated SQL Query: ```sql
+SELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (eccr_dept_nm = 'Technical Support' OR acd_area_nm = 'Technical Support' OR script_nm = 'Technical Support' OR bus_rule = 'Technical Support') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+```
+
+Error executing query: 400 Syntax error: Unexpected identifier `` at [1:1]; reason: invalidQuery, location: query, message: Syntax error: Unexpected identifier `` at [1:1]
+
+Location: US
+Job ID: c01e125f-ce3b-46d5-9086-ab8a9d9de3aa
+
+Final Response: None
+
+
 
 # gemini_agent.py
 import vertexai
