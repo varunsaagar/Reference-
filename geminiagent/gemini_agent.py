@@ -1,3 +1,14 @@
+SELECT AVG(call_duration_seconds) FROM icm_summary_fact_exp WHERE (eccr_dept_nm = 'Technical Support' OR script_nm LIKE '%Technical Support%' OR acd_area_nm LIKE '%Technical Support%' OR bus_rule LIKE '%Technical Support%' OR CAST(super_bus_rule as STRING) LIKE '%Technical Support%') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+
+```
+
+Error executing query: 400 Syntax error: Unexpected identifier `` at [1:1]; reason: invalidQuery, location: query, message: Syntax error: Unexpected identifier `` at [1:1]
+
+Location: US
+Job ID: 07e441e7-67ae-4011-ba2a-2bd9a16190b3
+
+Final Response: None
+
 # gemini_agent.py
 import vertexai
 from vertexai.generative_models import (
