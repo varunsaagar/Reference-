@@ -1,3 +1,14 @@
+Enter your question (or 'quit' to exit): Find the number of first time callers on Jun 1st who did not call before in the last 30 days
+
+Processing query through RAG pipeline...
+
+Error getting context: 400 Unable to submit request because it must have a text parameter. Add a text parameter and try again. Learn more: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini
+Error generating SQL: 'NoneType' object has no attribute 'name'
+
+=== RESPONSE ===
+The query failed to execute. This is because the provided SQL query is invalid. It only contains "SELECT 1", which doesn't specify any table or condition to query data from. To fix this, you need to write a valid SQL query that selects data from a specific table based on certain criteria.
+
+
 ###############################################################################
 # RAG PIPELINE
 ###############################################################################
