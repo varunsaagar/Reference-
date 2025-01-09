@@ -1,4 +1,18 @@
+Extracted SQL Query (before processing): 
+Error handling function call: type object 'Part' has no attribute 'from_function_call'
+Iteration: 3
+Initial response: content {
+  role: "model"
+  parts {
+    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm LIKE \'%Tech%\' OR script_nm LIKE \'%Tech%\' OR eccr_dept_nm LIKE \'%Tech%\' OR bus_rule LIKE \'%Tech%\' OR CAST(super_bus_rule AS STRING) LIKE \'%Tech%\') AND call_end_dt = DATE(\'2023-10-26\')\n\n```\n"
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.011321371251886541
 
+Extracted SQL Query (before processing): 
+Error handling function call: type object 'Part' has no attribute 'from_function_call'
+Final Response: Max iterations reached without a successful query.
 import vertexai
 from vertexai.generative_models import (
     FunctionDeclaration,
