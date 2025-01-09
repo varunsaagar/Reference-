@@ -1,12 +1,16 @@
-
 import time
 from google.cloud import bigquery
 from google.api_core import exceptions
 from vertexai.generative_models import FunctionDeclaration, GenerativeModel, Part, Tool
 
-# BigQuery configuration
-BIGQUERY_PROJECT_ID = "vz-it-np-ienv-test-vegsdo-0"
+# "source_project_id":"vz-it-np-ienv-test-vegsdo-0",
+# "source_dataset_id":"vegas_monitoring",
+# "source_table_id":"api_status_monitoring",
+# You can modify these constants for your specific dataset
+BIGQUERY_PROJECT_ID = "vz-it-np-ienv-test-vegsdo-0"  # Replace with your project ID
 BIGQUERY_DATASET_ID = "vegas_monitoring"
+USE_BIGQUERY = True  # Set to False to use SQLite instead
+
 
 # Function declarations
 list_datasets_func = FunctionDeclaration(
@@ -64,7 +68,8 @@ sql_query_func = FunctionDeclaration(
 )
 
 class DatabaseAnalyzer:
-    def __init__(self):
+    def __init__(self, use_bigquery=USE_BIGQUERY):
+        self.use_bigquery = use_bigquery
         self.sql_query_tool = Tool(
             function_declarations=[
                 list_datasets_func,
@@ -75,12 +80,14 @@ class DatabaseAnalyzer:
         )
         
         self.model = GenerativeModel(
-            "gemini-1.5-pro",
+            "gemini-1.5-pro-002",
             generation_config={"temperature": 0},
             tools=[self.sql_query_tool],
         )
         
-        self.init_bigquery()
+        # Initialize database connection
+        if self.use_bigquery:
+            self.init_bigquery()
     
     def init_bigquery(self):
         """Initialize BigQuery client and check connection"""
@@ -118,8 +125,10 @@ class DatabaseAnalyzer:
         chat = self.model.start_chat()
         
         enhanced_prompt = prompt + """
-            Please analyze the data and provide a clear, concise summary of the findings.
-            Focus on key metrics and insights that directly answer the question.
+            Please give a concise, high-level summary followed by detail in
+            plain language about where the information in your response is
+            coming from in the database. Only use information you learn
+            from the database queries.
             """
         
         try:
@@ -127,33 +136,20 @@ class DatabaseAnalyzer:
             response = response.candidates[0].content.parts[0]
             
             function_calling_in_process = True
-            results = []
-            
             while function_calling_in_process:
                 try:
-                    if not hasattr(response, 'function_call'):
-                        function_calling_in_process = False
-                        continue
+                    params = {}
+                    for key, value in response.function_call.args.items():
+                        params[key] = value
                         
-                    params = {
-                        key: value 
-                        for key, value in response.function_call.args.items()
-                    }
+                    # Handle different function calls based on database type
+                    if self.use_bigquery:
+                        api_response = self._handle_bigquery_function(response.function_call.name, params)
                     
-                    # Execute query and get results
-                    api_response = self._handle_bigquery_function(
-                        response.function_call.name, 
-                        params
-                    )
+                    print(f"Function called: {response.function_call.name}")
+                    print(f"Parameters: {params}")
+                    print(f"Response: {api_response}\n")
                     
-                    # Store results for summarization
-                    results.append({
-                        'function': response.function_call.name,
-                        'params': params,
-                        'response': api_response
-                    })
-                    
-                    # Send results back to model for next step
                     response = chat.send_message(
                         Part.from_function_response(
                             name=response.function_call.name,
@@ -164,78 +160,50 @@ class DatabaseAnalyzer:
                     
                 except AttributeError:
                     function_calling_in_process = False
-            
-            # Generate final summary based on all results
-            summary_prompt = f"""
-                Based on the query results, provide a clear and concise summary:
-                Query: {prompt}
-                Results: {results}
-                """
-            
-            final_response = chat.send_message(summary_prompt)
-            return final_response.candidates[0].content.parts[0].text
+                    
+            return response.text
             
         except Exception as e:
             return f"Error processing query: {str(e)}"
     
     def _handle_bigquery_function(self, function_name, params):
-        """Execute BigQuery functions and return results"""
-        try:
-            if function_name == "sql_query":
-                job_config = bigquery.QueryJobConfig(maximum_bytes_billed=100000000)
-                cleaned_query = params["query"].replace("\\n", " ").replace("\n", "").replace("\\", "")
-                
-                # Execute query and wait for results
-                query_job = self.client.query(cleaned_query, job_config=job_config)
-                results = query_job.result()
-                
-                # Convert results to list of dictionaries
-                return [dict(row) for row in results]
-                
-            elif function_name == "get_table":
-                table = self.client.get_table(params["table_id"])
-                return {
-                    'description': table.description,
-                    'schema': [field.name for field in table.schema],
-                    'num_rows': table.num_rows
-                }
-                
-            elif function_name == "list_tables":
-                tables = self.client.list_tables(params["dataset_id"])
-                return [table.table_id for table in tables]
-                
-            elif function_name == "list_datasets":
-                return BIGQUERY_DATASET_ID
-                
-        except Exception as e:
-            return f"Error executing BigQuery function {function_name}: {str(e)}"
+        """Handle BigQuery-specific function calls"""
+        if function_name == "list_datasets":
+            return BIGQUERY_DATASET_ID
+            
+        elif function_name == "list_tables":
+            tables = self.client.list_tables(params["dataset_id"])
+            return str([table.table_id for table in tables])
+            
+        elif function_name == "get_table":
+            table = self.client.get_table(params["table_id"])
+            table_info = table.to_api_repr()
+            return str({
+                'description': table_info.get('description', ''),
+                'schema': [column['name'] for column in table_info['schema']['fields']]
+            })
+            
+        elif function_name == "sql_query":
+            job_config = bigquery.QueryJobConfig(maximum_bytes_billed=100000000)
+            cleaned_query = params["query"].replace("\\n", " ").replace("\n", "").replace("\\", "")
+            query_job = self.client.query(cleaned_query, job_config=job_config)
+            results = query_job.result()
+            return str([dict(row) for row in results])
 
 def main():
+    # Create analyzer instance - choose database type here
     try:
-        analyzer = DatabaseAnalyzer()
+        analyzer = DatabaseAnalyzer(use_bigquery=USE_BIGQUERY)
     except Exception as e:
         print(f"\nFailed to initialize database analyzer: {str(e)}")
         return
 
-    # Sample queries
-    sample_queries = [
-        "What kind of information is in this database?",
-        "What percentage of orders are returned?",
-        "How is inventory distributed across our regional distribution centers?",
-        "Do customers typically place more than one order?",
-        "Which product categories have the highest profit margins?"
-    ]
+    # Prompt for the query
+    query = "Find the number of first time callers on Jun 1st who did not call before in the last 30 days"
     
-    print("\nSample queries you can try:", *sample_queries, sep="\n- ")
-    
-    while True:
-        query = input("\nEnter your question (or 'quit' to exit): ")
-        if query.lower() == 'quit':
-            break
-            
-        print("\nProcessing query...\n")
-        response = analyzer.process_query(query)
-        print("Response:", response)
+    print("\nProcessing query...\n")
+    response = analyzer.process_query(query)
+    print("Response:", response)
 
 if __name__ == "__main__":
     main()
