@@ -29,7 +29,7 @@ def parse_response_string(response):
             return "Empty prediction"
             
         prediction = str(prediction).strip()
-        preduction
+        prediction = prediction.replace("```json", "").replace("```")
         
         return prediction
     except Exception as ex:
