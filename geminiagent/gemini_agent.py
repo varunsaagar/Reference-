@@ -1,53 +1,11 @@
-
-(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (eccr_dept_nm = \'Technical Support\' OR script_nm LIKE \'%Technical Support%\' OR acd_area_nm LIKE \'%Technical Support%\' OR bus_rule LIKE \'%Technical Support%\' OR super_bus_rule LIKE \'%Technical Support%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.012768606185913085
-
-Extracted SQL Query (before processing): 
-Error handling function call: name 'FunctionCall' is not defined
-Iteration: 2
-Traceback (most recent call last):
-  File "/mnt/geminiagent/main.py", line 44, in <module>
-    main()
-  File "/mnt/geminiagent/main.py", line 39, in main
-    final_response = agent.process_query(formatted_query)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/geminiagent/gemini_agent.py", line 354, in process_query
-    response = self.chat.send_message(sql_prompt)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 1257, in send_message
-    return self._send_message(
-           ^^^^^^^^^^^^^^^^^^^
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 1386, in _send_message
-    response = self._model._generate_content(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 771, in _generate_content
-    request = self._prepare_request(
-              ^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 3201, in _prepare_request
-    request_v1beta1 = super()._prepare_request(
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 506, in _prepare_request
-    _validate_generate_content_parameters(
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 169, in _validate_generate_content_parameters
-    _validate_contents_type_as_valid_sequence(contents)
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 214, in _validate_contents_type_as_valid_sequence
-    raise TypeError(
-TypeError: When passing a list with Content objects, every item in a list must be a Content object.
-# gemini_agent.py
 import vertexai
 from vertexai.generative_models import (
     FunctionDeclaration,
     GenerativeModel,
     Part,
     Tool,
+    FunctionCall,  # Import FunctionCall
+    Content, # Import Content
 )
 from data_access import BigQueryManager
 from typing import List, Dict, Tuple
@@ -240,47 +198,38 @@ class GeminiAgent:
             )
         return formatted_schema
 
-    def _generate_sql_prompt(self, user_query: str, intent: str, entity_mapping: Dict[str, List[str]], error_message: str = None) -> str:
-        """Generates a prompt for the Gemini model to generate a SQL query."""
+    def _generate_sql_prompt(self, user_query: str, intent: str, entity_mapping: Dict[str, List[str]], error_message: str = None) -> List[Part]:
+        """Generates a prompt for the Gemini model to generate a SQL query, returning a list of Parts."""
 
         # Get the fully qualified table name
         full_table_name = f"`{self.project_id}.{self.dataset_id}.{self.table_id}`"
 
-        # Basic prompt
-        prompt = f"""
-        You are a helpful assistant that can convert natural language into SQL queries for Bigquery.
-
-        You have access to the following BigQuery table:
-        {full_table_name}
-        {self.formatted_table_schema}
-
-        Convert the following natural language query into a SQL query:
-        {user_query}
-        """
-
-        # Add intent information
-        prompt += f"\nIdentified intent: {intent}"
+        # Basic prompt components, each formatted as a Part
+        prompt_parts = [
+            Part.from_text("You are a helpful assistant that can convert natural language into SQL queries for Bigquery."),
+            Part.from_text(f"You have access to the following BigQuery table:\n{full_table_name}\n{self.formatted_table_schema}"),
+            Part.from_text(f"Convert the following natural language query into a SQL query:\n{user_query}"),
+            Part.from_text(f"Identified intent: {intent}")
+        ]
 
         # Add entity-column mapping information
         if entity_mapping:
-            prompt += "\n\nRelevant entities and their mappings to columns:"
+            entity_mapping_text = "\nRelevant entities and their mappings to columns:"
             for entity_type, columns in entity_mapping.items():
                 if entity_type == "METRIC":
-                    # Special handling for metrics
                     for metric, column in zip(entity_mapping["METRIC"], columns):
-                        prompt += f"\n- {metric} -> {column}"
+                        entity_mapping_text += f"\n- {metric} -> {column}"
                 else:
-                    # General case for other entities
                     for column in columns:
-                        prompt += f"\n- {entity_type} -> {column}"
+                        entity_mapping_text += f"\n- {entity_type} -> {column}"
+            prompt_parts.append(Part.from_text(entity_mapping_text))
 
         # Add error message if available
         if error_message:
-            prompt += f"\n\nPrevious SQL query generated an error: {error_message}"
-            prompt += "\nPlease fix the SQL query based on this error message."
+            prompt_parts.append(Part.from_text(f"\nPrevious SQL query generated an error: {error_message}\nPlease fix the SQL query based on this error message."))
 
         # Add instructions for SQL generation
-        prompt += """
+        instructions = """
         \nInstructions:
         - Generate a syntactically correct BigQuery SQL query.
         - Only use the table and columns mentioned in the schema.
@@ -292,12 +241,12 @@ class GeminiAgent:
         - Make sure to add single quotes around the string values.
         - Dont add any extra information in the response apart from SQL query.
         - If you need to know the possible values in a column, use the `get_distinct_column_values` function to get a sample of distinct values.
-
         """
+        prompt_parts.append(Part.from_text(instructions))
 
         # Add few-shot examples based on intent (can be expanded)
         if intent == "get_call_metrics":
-            prompt += """
+            examples = """
             Examples:
             Question: How many calls were abandoned yesterday?
             SQL: SELECT COUNT(*) FROM `vz-it-pr-gk1v-cwlsdo-0.vzw_uda_prd_tbls_rd_v.icm_summary_fact_exp` WHERE DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AND abandons_cnt > 0
@@ -305,8 +254,10 @@ class GeminiAgent:
             Question: What is the average handle time for calls from the 'billing' department last week?
             SQL: SELECT AVG(handle_tm_seconds) FROM `vz-it-pr-gk1v-cwlsdo-0.vzw_uda_prd_tbls_rd_v.icm_summary_fact_exp` WHERE eccr_dept_nm = 'billing' AND call_end_dt BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 8 DAY) AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
             """
+            prompt_parts.append(Part.from_text(examples))
 
-        return prompt
+        return prompt_parts
+
 
     def _handle_function_call(self, response: Part) -> Part:
         """Handles function calls from the model."""
@@ -389,10 +340,10 @@ class GeminiAgent:
         for iteration in range(max_iterations):
             print(f"Iteration: {iteration + 1}")
             # Generate prompt based on user query, intent, entities, and any previous error
-            sql_prompt = self._generate_sql_prompt(user_query, intent, entity_mapping, error_message)
-
+            sql_prompt_parts = self._generate_sql_prompt(user_query, intent, entity_mapping, error_message)
+            
             # Send prompt to Gemini and handle function calls
-            response = self.chat.send_message(sql_prompt)
+            response = self.chat.send_message(sql_prompt_parts)
             print(f"Initial response: {response.candidates[0]}")
 
             while response.candidates[0].finish_reason == "TOOL":
@@ -446,16 +397,16 @@ class GeminiAgent:
                         error_message = function_response.function_response.content["content"]
                         print(error_message)
                         # Update the chat history with the error for the next iteration
-                        self.chat.history.append(Part.from_text(f"Error: {error_message}"))
-                        self.chat.history.append(Part.from_text(f"Please provide the corrected SQL query for: {user_query}"))
+                        self.chat.history.append(Content(parts=[Part.from_text(f"Error: {error_message}")], role="user"))
+                        self.chat.history.append(Content(parts=[Part.from_text(f"Please provide the corrected SQL query for: {user_query}")], role="model"))
 
                 except Exception as e:
                     error_message = f"Error handling function call: {e}"
                     print(error_message)
 
                     # Update the chat history with the error for the next iteration
-                    self.chat.history.append(Part.from_text(f"Error: {error_message}"))
-                    self.chat.history.append(Part.from_text(f"Please provide the corrected SQL query for: {user_query}"))
+                    self.chat.history.append(Content(parts=[Part.from_text(f"Error: {error_message}")], role="user"))
+                    self.chat.history.append(Content(parts=[Part.from_text(f"Please provide the corrected SQL query for: {user_query}")], role="model"))
             else:
                 # Handle cases where no SQL query is generated
                 error_message = "No SQL query generated."
