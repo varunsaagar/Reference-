@@ -15,12 +15,18 @@ class LLMParameters(BaseModel):
 def parse_response_string(response):
     """Parse and clean the Vegas API response."""
     try:
-        prediction = response.get('prediction', '')
-        if not prediction:
+        if not response or 'prediction' not in response:
             return "No prediction found"
             
+        prediction = response['prediction']
+        if not prediction:
+            return "Empty prediction"
+            
         prediction = prediction.strip()
-        prediction = prediction.replace("```json", "").replace("```")
+        prediction = prediction.replace("```
+json", "").replace("
+
+        
         if prediction.startswith('{{') and prediction.endswith('}}'):
             prediction = prediction[1:-1].strip()
             
@@ -33,34 +39,35 @@ async def vegas_async(session, prompt, request_number):
     """Asynchronously call Vegas API."""
     url = "https://vegas-llm-batch.verizon.com/vegas/apps/batch/prompt/LLMInsight"
     
-    payload_dict = {
-        "useCase": "CALL_ANALYTICS_UI",
-        "contextId": "CALL_INTENT_TEST",
-        "preSeed_injection_map": {
-            "{INPUT}": prompt
+    payload = {
+        "useCase": "LLM_EVALUATION_FRAMEWORK",
+        "contextId": "BILLING_SLM_EVAL",
+        "context": {
+            "Question": prompt
         },
         "parameters": {
             "temperature": 0.9,
             "maxOutputTokens": 4096,
-            "topP": 1,
-            "topK": 1
+            "topP": 1.0,
+            "topK": 1.0
         }
     }
     
-    headers = {'Content-Type': 'application/json'}
-    
-    print(f"Request {request_number} payload: {json.dumps(payload_dict, indent=2)}")
-    print(f"Request {request_number} headers: {headers}")
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
     
     try:
-        async with session.post(url, json=payload_dict, headers=headers, ssl=False) as response:
+        async with session.post(url, json=payload, headers=headers, ssl=False) as response:
             if response.status != 200:
-                print(f"Request {request_number} failed with status {response.status}")
+                error_text = await response.text()
+                print(f"Request {request_number} failed with status {response.status}: {error_text}")
                 return {'prediction': f"Error: Status {response.status}", 'index': request_number}
-                
+            
+            # Make sure to read the response data
             response_data = await response.json()
-            parsed_response = parse_response_string(response_data)
-            return {'prediction': parsed_response, 'index': request_number}
+            return {'prediction': response_data, 'index': request_number}
             
     except Exception as ex:
         print(f"Request {request_number} failed with error: {ex}")
@@ -82,10 +89,15 @@ async def process_batch(session, df, start_idx, batch_size):
 def run_async_requests_vegas(df, max_requests_per_minute):
     """Run async requests with rate limiting and save results."""
     async def process_requests():
-        async with aiohttp.ClientSession() as session:
+        # Configure timeout and connector
+        timeout = aiohttp.ClientTimeout(total=300)  # 5 minutes timeout
+        connector = aiohttp.TCPConnector(ssl=False, limit=max_requests_per_minute)
+        
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
             results = []
             
             for batch_start in range(0, len(df), max_requests_per_minute):
+                print(f"Processing batch starting at index {batch_start}")
                 batch_start_time = time.time()
                 
                 batch_results = await process_batch(
@@ -100,11 +112,11 @@ def run_async_requests_vegas(df, max_requests_per_minute):
                 # Rate limiting
                 elapsed = time.time() - batch_start_time
                 if elapsed < 60 and batch_start + max_requests_per_minute < len(df):
-                    await asyncio.sleep(60 - elapsed)
+                    wait_time = 60 - elapsed
+                    print(f"Rate limiting: waiting {wait_time:.2f} seconds")
+                    await asyncio.sleep(wait_time)
                     
-            # Sort results by index to maintain original order
-            sorted_results = sorted(results, key=lambda x: x['index'])
-            return [r['prediction'] for r in sorted_results]
+            return sorted(results, key=lambda x: x['index'])
             
     return asyncio.run(process_requests())
 
@@ -113,95 +125,16 @@ if __name__ == '__main__':
     file_name = "dummy.csv"
     df = pd.read_csv(file_name)
     
-    # Process the requests and get responses
-    responses = run_async_requests_vegas(df, 3)
+    if 'id' not in df.columns or 'prompt' not in df.columns:
+        print("Error: CSV file must contain 'id' and 'prompt' columns")
+        exit(1)
+    
+    print(f"Processing {len(df)} requests...")
+    results = run_async_requests_vegas(df, 3)  # Reduced batch size to 3 for better control
     
     # Add responses to the DataFrame
-    df['response'] = responses
+    df['response'] = [r['prediction'] for r in results]
     
     # Save back to the same CSV file
     df.to_csv(file_name, index=False)
-    print(f"Processed {len(responses)} requests and saved results to {file_name}")
-
-
-payload_dict = { "useCase":c_usecase, "contextId": context_id, "preSeed_injection_map": context, "parameters": parameters } if gemini_flash: payload_dict['transactionMetadata'] = {"clientId": "1234" } 
-
-this is the sample payload , api key is not required since endpoint is not authenticaked and open fix the issue 
-
-(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q async_test]$ python3 run_aync.py 
-Request 0 payload: {
-  "useCase": "CALL_ANALYTICS_UI",
-  "contextId": "CALL_INTENT_TEST",
-  "preSeed_injection_map": {
-    "{INPUT}": NaN
-  },
-  "parameters": {
-    "temperature": 0.9,
-    "maxOutputTokens": 4096,
-    "topP": 1,
-    "topK": 1
-  }
-}
-Request 0 headers: {'Content-Type': 'application/json'}
-Request 1 payload: {
-  "useCase": "CALL_ANALYTICS_UI",
-  "contextId": "CALL_INTENT_TEST",
-  "preSeed_injection_map": {
-    "{INPUT}": NaN
-  },
-  "parameters": {
-    "temperature": 0.9,
-    "maxOutputTokens": 4096,
-    "topP": 1,
-    "topK": 1
-  }
-}
-Request 1 headers: {'Content-Type': 'application/json'}
-Request 2 payload: {
-  "useCase": "CALL_ANALYTICS_UI",
-  "contextId": "CALL_INTENT_TEST",
-  "preSeed_injection_map": {
-    "{INPUT}": NaN
-  },
-  "parameters": {
-    "temperature": 0.9,
-    "maxOutputTokens": 4096,
-    "topP": 1,
-    "topK": 1
-  }
-}
-Request 2 headers: {'Content-Type': 'application/json'}
-Request 2 failed with status 400
-Request 1 failed with status 400
-Request 0 failed with status 400
-Request 3 payload: {
-  "useCase": "CALL_ANALYTICS_UI",
-  "contextId": "CALL_INTENT_TEST",
-  "preSeed_injection_map": {
-    "{INPUT}": NaN
-  },
-  "parameters": {
-    "temperature": 0.9,
-    "maxOutputTokens": 4096,
-    "topP": 1,
-    "topK": 1
-  }
-}
-Request 3 headers: {'Content-Type': 'application/json'}
-Request 4 payload: {
-  "useCase": "CALL_ANALYTICS_UI",
-  "contextId": "CALL_INTENT_TEST",
-  "preSeed_injection_map": {
-    "{INPUT}": NaN
-  },
-  "parameters": {
-    "temperature": 0.9,
-    "maxOutputTokens": 4096,
-    "topP": 1,
-    "topK": 1
-  }
-}
-Request 4 headers: {'Content-Type': 'application/json'}
-Request 4 failed with status 400
-Request 3 failed with status 400
-Processed 5 requests and saved results to dummy.csv# api_key = 'ehG4iYbAcujzXjP6AXG2GAhq2heMR7wS' payload = json.dumps(payload_dict) headers = { 'Content-Type': 'application/json', 'X-apikey': api_key }
+    print(f"Processed {len(results)} requests and saved results to {file_name}")
