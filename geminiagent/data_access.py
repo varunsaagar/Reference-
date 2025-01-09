@@ -1,24 +1,4 @@
 
-(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM icm_summary_fact_exp WHERE (eccr_dept_nm = \'Technical Support\' OR script_nm LIKE \'%Technical Support%\' OR acd_area_nm LIKE \'%Technical Support%\' OR bus_rule LIKE \'%Technical Support%\' OR CAST(super_bus_rule as STRING) LIKE \'%Technical Support%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0084864157382572927
-
-Final response: ```sql
-SELECT AVG(call_duration_seconds) FROM icm_summary_fact_exp WHERE (eccr_dept_nm = 'Technical Support' OR script_nm LIKE '%Technical Support%' OR acd_area_nm LIKE '%Technical Support%' OR bus_rule LIKE '%Technical Support%' OR CAST(super_bus_rule as STRING) LIKE '%Technical Support%') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-
-```
-
-Final Response: ```sql
-SELECT AVG(call_duration_seconds) FROM icm_summary_fact_exp WHERE (eccr_dept_nm = 'Technical Support' OR script_nm LIKE '%Technical Support%' OR acd_area_nm LIKE '%Technical Support%' OR bus_rule LIKE '%Technical Support%' OR CAST(super_bus_rule as STRING) LIKE '%Technical Support%') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-
-```
-
 
 # data_access.py
 from google.cloud import bigquery
@@ -70,4 +50,19 @@ class BigQueryManager:
             return [dict(row) for row in results]
         except Exception as e:
             print(f"Error executing query: {e}")
+            return None
+    def get_distinct_values(self, column_name, limit=10):
+        """Retrieves a sample of distinct values from a specified column."""
+        try:
+            query = f"""
+                SELECT DISTINCT {column_name}
+                FROM `{self.project_id}.{self.dataset_id}.{self.table_id}`
+                WHERE {column_name} IS NOT NULL
+                LIMIT {limit}
+            """
+            query_job = self.client.query(query)
+            results = query_job.result()
+            return [row[0] for row in results]
+        except Exception as e:
+            print(f"Error getting distinct values for {column_name}: {e}")
             return None
