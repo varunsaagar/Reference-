@@ -1,19 +1,16 @@
 # data_access.py
 from google.cloud import bigquery
 from google.api_core import exceptions
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
 
 class BigQueryManager:
     def __init__(self, project_id, dataset_id, table_id):
+        # Hardcode project, dataset, and table IDs
         self.project_id = project_id
         self.dataset_id = dataset_id
         self.table_id = table_id
 
         # Use default credentials
-        self.client = bigquery.Client(project=project_id)
+        self.client = bigquery.Client(project=self.project_id)
 
     def get_table_schema(self):
         """Retrieves the schema of the specified BigQuery table."""
