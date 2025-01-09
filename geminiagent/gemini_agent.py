@@ -1,3 +1,15 @@
+Extracted SQL Query (before processing): 
+Traceback (most recent call last):
+  File "/mnt/geminiagent/main.py", line 44, in <module>
+    main()
+  File "/mnt/geminiagent/main.py", line 39, in main
+    final_response = agent.process_query(formatted_query)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/geminiagent/gemini_agent.py", line 366, in process_query
+    simulated_function_call = Part.from_function_call(
+                              ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'Part' has no attribute 'from_function_call'. Did you mean: 'function_call'?
+
 # gemini_agent.py
 import vertexai
 from vertexai.generative_models import (
