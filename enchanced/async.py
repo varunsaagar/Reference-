@@ -1,133 +1,125 @@
-"""Calling Vegas api asynchronously for the limit set"""
+
 import json
 import time
-import os
 import pandas as pd
 import asyncio
 import aiohttp
 from pydantic import BaseModel
-import re
 
 class LLMParameters(BaseModel):
-    """
-    The class represents LLM Parameters to be passed to vegas api.
-    """
-    top_k: float = 0.7
-    top_p: float = 0.5
-    temperature: float = 0.2
-    repetition_penalty: float = 1.1
-    max_new_tokens: int = 512
-    min_new_tokens: int = 16   
+    """The class represents LLM Parameters to be passed to vegas api."""
+    top_k: float = 1.0
+    top_p: float = 1.0
+    temperature: float = 0.9
+    max_output_tokens: int = 4096
 
-def parse_response_string( vegas):
+def parse_response_string(response):
+    """Parse and clean the Vegas API response."""
     try:
-        vegas_res = vegas['prediction']
-        vegas_res = vegas_res.strip()
-        vegas_res = re.sub(r'\{\s+\{', '{{', vegas_res)
-        vegas_res = re.sub(r'\}\s+\}', '}}', vegas_res)
-        vegas_res = re.sub(' +', ' ', vegas_res)
+        prediction = response.get('prediction', '')
+        if not prediction:
+            return "No prediction found"
+            
+        prediction = prediction.strip()
+        prediction = prediction.replace("```
+json", "").replace("
+
         
-        if(vegas_res.startswith('{{') and vegas_res.endswith('}}')):
-            vegas_res = vegas_res[1:-1]
-            vegas_res = vegas_res.strip()
-        
-        vegas_res = vegas_res.replace("```json", "").replace("```", "")    
-        vegas_score = vegas_res
-        # logger.info(f"341:: VEGAS Score  {vegas_score}")
+        if prediction.startswith('{{') and prediction.endswith('}}'):
+            prediction = prediction[1:-1].strip()
+            
+        return prediction
     except Exception as ex:
-        logger.error("********************************************** %s, vegas value: %s ********", ex, vegas)
-        logger.critical(ex, exc_info=True)
-        vegas_score = "Please try again later."
-    # print(vegas_score)
-    return vegas_score  
-    
+        print(f"Error parsing response: {ex}")
+        return "Error parsing response"
+
 async def vegas_async(session, prompt, request_number):
-    """
-    asynchronously call Vegas url
-
-    Returns
-    -------
-    None
-    """
-    print("********************* vegas_async **********************")
-    params = LLMParameters().dict()
-    c_usecase = 'LLM_EVALUATION_FRAMEWORK'
-    context_id="BILLING_SLM_EVAL"
-    context =     {
-                    "{Question}": prompt,
-                    } 
-    parameters ={
-                "temperature":0.9 ,
-                "maxOutputTokens":4096,
-                "topP": 1 ,
-                "topK": 1}
-
-    url = r"https://vegas-llm-batch.verizon.com/vegas/apps/batch/prompt/LLMInsight"
-    # api_key = Config.get_required_config_var(r"jarvis_api_settings\api_key")
-    payload_dict = {
-            "useCase":'CALL_ANALYTICS_UI',
-            "contextId": 'CALL_INTENT_TEST',
-            "preSeed_injection_map": {
-            "{INPUT}": prompt },
-            "parameters": parameters
+    """Asynchronously call Vegas API."""
+    url = "https://vegas-llm-batch.verizon.com/vegas/apps/batch/prompt/LLMInsight"
+    
+    payload = {
+        "useCase": "CALL_ANALYTICS_UI",
+        "contextId": "CALL_INTENT_TEST",
+        "preSeed_injection_map": {
+            "{INPUT}": prompt
+        },
+        "parameters": {
+            "temperature": 0.9,
+            "maxOutputTokens": 4096,
+            "topP": 1,
+            "topK": 1
         }
-    payload = json.dumps(payload_dict)
-    headers = {
-        'Content-Type': 'application/json',
     }
-    logger.info('----------------------------------------'+payload+'`--------------------------------------')
+    
+    headers = {'Content-Type': 'application/json'}
+    
     try:
-        async with session.post(url, data=payload, headers=headers, ssl=False) as response_vegas:
-            # Process the response here
-            response_vegas = await response_vegas.json()
-            print("Vegas Response:", response_vegas)
-            response_vegas = parse_response_string(TEMP_MODELNAME.upper(), response_vegas)
-            print("Vegas Final Response :", response_vegas)
-            return {'prediction':response_vegas, 'index': request_number}
+        async with session.post(url, json=payload, headers=headers, ssl=False) as response:
+            if response.status != 200:
+                print(f"Request {request_number} failed with status {response.status}")
+                return {'prediction': f"Error: Status {response.status}", 'index': request_number}
+                
+            response_data = await response.json()
+            parsed_response = parse_response_string(response_data)
+            return {'prediction': parsed_response, 'index': request_number}
+            
     except Exception as ex:
-        logger.error("Vegas call failed with %s", ex)
-        return {'prediction':{}, 'index': request_number}
+        print(f"Request {request_number} failed with error: {ex}")
+        return {'prediction': f"Error: {str(ex)}", 'index': request_number}
 
- 
-def run_async_requests_gemini(df, max_requests_per_minute):
-    """
-    Creates task and run async batches
+async def process_batch(session, df, start_idx, batch_size):
+    """Process a batch of requests."""
+    tasks = []
+    for i in range(batch_size):
+        if start_idx + i >= len(df):
+            break
+        prompt = df.iloc[start_idx + i]['prompt']
+        task = asyncio.create_task(
+            vegas_async(session, prompt, start_idx + i)
+        )
+        tasks.append(task)
+    return await asyncio.gather(*tasks)
 
-    Returns
-    -------
-    None
-    """
-    results = []
-    print("********************* run_async_requests_gemini **********************")
+def run_async_requests_vegas(df, max_requests_per_minute):
+    """Run async requests with rate limiting and save results."""
     async def process_requests():
-        print("********************* process_requests **********************")
         async with aiohttp.ClientSession() as session:
-            tasks = []
-            st = time.time()
-            for row_index, row in df.iterrows():
-                prompt = row['call_tr_with_prompt']
-                task = asyncio.create_task(vegas_async(session, prompt, row_index))
-                tasks.append(task)
-                if ((row_index+1) % max_requests_per_minute == 0) or ((row_index+1) >= len(df)):
-                    intermittent_results = await asyncio.gather(*tasks)
-                    intermittent_results = sorted(intermittent_results, key=lambda x:(x["index"] is None, x["index"]))
-                    results.extend([obj['prediction'] for obj in intermittent_results])
-                    end_time = time.time()
-                    logger.info("time taken for %d requests --- %f", len(tasks), end_time-st)
-                    tasks = []
-                    if (end_time-st) < 60 and ((row_index+1) < len(df)):
-                        logger.info("Sleeeping for %f", 60-(end_time-st))
-                        await asyncio.sleep(60-(end_time-st))
-                    st = time.time()
-            logger.info("time taken for %d requests --- %f", len(df), time.time()-st)
-            return results
+            results = []
+            
+            for batch_start in range(0, len(df), max_requests_per_minute):
+                batch_start_time = time.time()
+                
+                batch_results = await process_batch(
+                    session, 
+                    df, 
+                    batch_start, 
+                    max_requests_per_minute
+                )
+                
+                results.extend(batch_results)
+                
+                # Rate limiting
+                elapsed = time.time() - batch_start_time
+                if elapsed < 60 and batch_start + max_requests_per_minute < len(df):
+                    await asyncio.sleep(60 - elapsed)
+                    
+            # Sort results by index to maintain original order
+            sorted_results = sorted(results, key=lambda x: x['index'])
+            return [r['prediction'] for r in sorted_results]
+            
     return asyncio.run(process_requests())
 
-
 if __name__ == '__main__':
-    file_name= "dummy.csv"
+    # Read the CSV file
+    file_name = "dummy.csv"
     df = pd.read_csv(file_name)
-    run_async_requests_gemini(df,10)
-
-
-
+    
+    # Process the requests and get responses
+    responses = run_async_requests_vegas(df, 10)
+    
+    # Add responses to the DataFrame
+    df['response'] = responses
+    
+    # Save back to the same CSV file
+    df.to_csv(file_name, index=False)
+    print(f"Processed {len(responses)} requests and saved results to {file_name}")
