@@ -1,25 +1,5 @@
 
-(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (eccr_dept_nm = \'Technical Support\' OR acd_area_nm = \'Technical Support\' OR script_nm = \'Technical Support\' OR bus_rule = \'Technical Support\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0021866628554015033
 
-Generated SQL Query: ```sql
-SELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (eccr_dept_nm = 'Technical Support' OR acd_area_nm = 'Technical Support' OR script_nm = 'Technical Support' OR bus_rule = 'Technical Support') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-```
-
-Error executing query: 400 Syntax error: Unexpected identifier `` at [1:1]; reason: invalidQuery, location: query, message: Syntax error: Unexpected identifier `` at [1:1]
-
-Location: US
-Job ID: c01e125f-ce3b-46d5-9086-ab8a9d9de3aa
-
-Final Response: None
 
 
 
@@ -345,13 +325,25 @@ class GeminiAgent:
 
         return function_response
 
+    def _extract_sql_query(self, response_text: str) -> str:
+        """Extracts the SQL query from the response text, removing backticks."""
+        # Find the SQL query within triple backticks
+        match = re.search(r"`sql(.*?)`", response_text, re.DOTALL)
+        if match:
+            sql_query = match.group(1).strip()
+            # Remove leading/trailing whitespace and newlines
+            sql_query = sql_query.strip()
+            return sql_query
+        else:
+            return response_text
+
     def process_query(self, user_query: str, max_iterations: int = 3) -> str:
         """Processes the user query with iterative error correction."""
         intent = self._extract_intent(user_query)
         extracted_entities = self._extract_entities(user_query)
         entity_mapping = self._map_entities_to_columns(extracted_entities)
         error_message = None
-        
+
         for iteration in range(max_iterations):
             print(f"Iteration: {iteration + 1}")
             # Generate prompt based on user query, intent, entities, and any previous error
@@ -365,22 +357,23 @@ class GeminiAgent:
                 print(f"Function called in loop : {response.candidates[0].finish_reason}")
                 function_response = self._handle_function_call(response.candidates[0].content.parts[0])
                 response = self.chat.send_message(function_response)
-            
+
             # Check if the model generated a SQL query
             if response.candidates[0].content.parts[0].text:
-                sql_query = response.candidates[0].content.parts[0].text
-                
+                # Extract SQL query, removing backticks
+                sql_query = self._extract_sql_query(response.candidates[0].content.parts[0].text)
+
                 # Execute the SQL query and check for errors
                 try:
                     print(f"Generated SQL Query: {sql_query}")
                     query_results = self.bq_manager.execute_query(sql_query)
-                    
+
                     # If query execution is successful, return the results
                     return str(query_results)
                 except Exception as e:
                     error_message = f"Error executing query: {e}"
                     print(error_message)
-                    
+
                     # Update the chat history with the error for the next iteration
                     self.chat.history.append(Part.from_text(f"Error: {error_message}"))
                     self.chat.history.append(Part.from_text(f"Please provide the corrected SQL query for: {user_query}"))
