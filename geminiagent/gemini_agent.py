@@ -1,18 +1,4 @@
-Extracted SQL Query (before processing): 
-Error handling function call: type object 'Part' has no attribute 'from_function_call'
-Iteration: 3
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm LIKE \'%Tech%\' OR script_nm LIKE \'%Tech%\' OR eccr_dept_nm LIKE \'%Tech%\' OR bus_rule LIKE \'%Tech%\' OR CAST(super_bus_rule AS STRING) LIKE \'%Tech%\') AND call_end_dt = DATE(\'2023-10-26\')\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.011321371251886541
 
-Extracted SQL Query (before processing): 
-Error handling function call: type object 'Part' has no attribute 'from_function_call'
-Final Response: Max iterations reached without a successful query.
 import vertexai
 from vertexai.generative_models import (
     FunctionDeclaration,
@@ -356,7 +342,7 @@ class GeminiAgent:
             print(f"Iteration: {iteration + 1}")
             # Generate prompt based on user query, intent, entities, and any previous error
             sql_prompt_parts = self._generate_sql_prompt(user_query, intent, entity_mapping, error_message)
-            
+
             # Send prompt to Gemini and handle function calls
             response = self.chat.send_message(sql_prompt_parts)
             print(f"Initial response: {response.candidates[0]}")
@@ -370,58 +356,30 @@ class GeminiAgent:
             if response.candidates[0].content.parts[0].text:
                 # Extract SQL query, removing backticks
                 sql_query = self._extract_sql_query(response.candidates[0].content.parts[0].text)
+                print(f"Extracted SQL Query (before processing): {sql_query}")
 
-                # Execute the SQL query using the function calling mechanism
+                # Directly execute the SQL query
                 try:
-                    # Construct a function call response object using Part.from_function_call
-                    function_call_response = Part.from_function_call(
-                        FunctionCall(
-                            name="execute_sql_query",
-                            args={"sql_query": sql_query}
-                        )
-                    )
+                    query_results = self.bq_manager.execute_query(sql_query)
+                    print(f"Query results: {query_results}")
 
-                    # Handle the function call as if the model had made it
-                    function_response = self._handle_function_call(function_call_response)
-
-                    # Check if the function call was successful and returned results
-                    if function_response.function_response.name == "execute_sql_query":
-                        # Parse the results from the string representation
-                        results_str = function_response.function_response.content["content"]
-                        # Assuming results are a list of dicts, remove the leading/trailing brackets and split into dicts
-                        results_str = results_str.strip("[]")  # Remove leading/trailing brackets
-                        if results_str:
-                            result_dicts = results_str.split("}, ")  # Split into individual dict strings
-                            results = []
-                            for i, result_dict in enumerate(result_dicts):
-                                result_dict = result_dict.replace(" ", "")
-                                if i < len(result_dicts) - 1:
-                                    result_dict += "}"  # Add back the closing brace for all but the last dict
-                                try:
-                                    # Parse each dict string into a dictionary
-                                    result_dict = eval(result_dict)
-                                    results.append(result_dict)
-                                except Exception as e:
-                                    print(f"Error parsing result dict: {e}")
-                                    return f"Error parsing query results: {e}"
-                            # If query execution and parsing is successful, return the results
-                            return str(results)
-                        else:
-                            return "Query executed successfully, but returned no results."
+                    # If query execution is successful, construct the response
+                    if query_results:
+                        return str(query_results)  # Return the results directly
                     else:
-                        error_message = function_response.function_response.content["content"]
-                        print(error_message)
-                        # Update the chat history with the error for the next iteration
-                        self.chat.history.append(Content(parts=[Part.from_text(f"Error: {error_message}")], role="user"))
-                        self.chat.history.append(Content(parts=[Part.from_text(f"Please provide the corrected SQL query for: {user_query}")], role="model"))
+                        error_message = "Query executed successfully but returned no results."
 
                 except Exception as e:
-                    error_message = f"Error handling function call: {e}"
+                    error_message = f"Error executing query: {e}"
                     print(error_message)
 
-                    # Update the chat history with the error for the next iteration
+                # Update the chat history with the error for the next iteration (if there is one)
+                if iteration < max_iterations - 1:
                     self.chat.history.append(Content(parts=[Part.from_text(f"Error: {error_message}")], role="user"))
                     self.chat.history.append(Content(parts=[Part.from_text(f"Please provide the corrected SQL query for: {user_query}")], role="model"))
+                else:
+                    return error_message if error_message else "Max iterations reached without a successful query."
+
             else:
                 # Handle cases where no SQL query is generated
                 error_message = "No SQL query generated."
