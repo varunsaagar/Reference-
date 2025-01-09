@@ -144,3 +144,12 @@ Request 0 failed with status 400: {"vegasTransactionId":"c0ff7d7d-d31d-4b82-95a2
 Request 1 failed with status 400: {"vegasTransactionId":"efcaf07d-4289-4acc-b48f-f392be0c9671","errorCode":"BAD_REQUEST","message":"Invalid request payload.","statusCode":400,"statusName":"BAD_REQUEST","path":"/vegas/apps/batch/prompt/LLMInsight","method":"POST","timestamp":"2025-01-09T10:53:27.42059237"}
 Rate limiting: waiting 59.67 seconds
 
+input data
+
+id,prompt
+1,What is the capital of France?,
+2,Explain the theory of relativity.,
+3,How does a computer work,
+4,What are the benefits of exercise?,
+5,Describe the process of photosynthesis.
+ 
