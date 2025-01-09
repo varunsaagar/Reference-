@@ -23,10 +23,7 @@ def parse_response_string(response):
             return "Empty prediction"
             
         prediction = prediction.strip()
-        prediction = prediction.replace("```
-json", "").replace("
-
-        
+        prediction = prediction.replace("```json", "").replace("```")
         if prediction.startswith('{{') and prediction.endswith('}}'):
             prediction = prediction[1:-1].strip()
             
