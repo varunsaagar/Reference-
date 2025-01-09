@@ -84,14 +84,17 @@ class DatabaseAnalyzer:
     def init_bigquery(self):
         """Initialize BigQuery client and check connection"""
         try:
+            # Explicitly set project
             self.client = bigquery.Client(project=BIGQUERY_PROJECT_ID)
             
+            # Test the connection by trying to access the dataset
             dataset_ref = f"{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}"
             self.client.get_dataset(dataset_ref)
             print("✅ Successfully connected to BigQuery")
             print(f"   Project: {BIGQUERY_PROJECT_ID}")
             print(f"   Dataset: {BIGQUERY_DATASET_ID}")
             
+            # List available tables
             dataset = self.client.dataset(BIGQUERY_DATASET_ID)
             tables = list(self.client.list_tables(dataset))
             print(f"\nAvailable tables ({len(tables)}):")
@@ -154,7 +157,7 @@ class DatabaseAnalyzer:
             return f"Error processing query: {str(e)}"
     
     def _handle_bigquery_function(self, function_name, params):
-        """Handle BigQuery-specific function calls"""
+        """Handle BigQuery function calls"""
         if function_name == "list_datasets":
             return BIGQUERY_DATASET_ID
             
@@ -180,17 +183,29 @@ class DatabaseAnalyzer:
 def main():
     try:
         analyzer = DatabaseAnalyzer()
-        
-        # Single hardcoded query
-        query = "What kind of information is in this database?"
-        print("\nProcessing query:", query)
-        print("\nResponse:", analyzer.process_query(query))
-        
     except Exception as e:
         print(f"\nFailed to initialize database analyzer: {str(e)}")
         return
 
+    # Sample queries
+    sample_queries = [
+        "What kind of information is in this database?",
+        "What percentage of orders are returned?",
+        "How is inventory distributed across our regional distribution centers?",
+        "Do customers typically place more than one order?",
+        "Which product categories have the highest profit margins?"
+    ]
+    
+    print("\nSample queries you can try:", *sample_queries, sep="\n- ")
+    
+    while True:
+        query = input("\nEnter your question (or 'quit' to exit): ")
+        if query.lower() == 'quit':
+            break
+            
+        print("\nProcessing query...\n")
+        response = analyzer.process_query(query)
+        print("Response:", response)
+
 if __name__ == "__main__":
     main()
-
-
