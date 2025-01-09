@@ -1,14 +1,4 @@
-Extracted SQL Query (before processing): 
-Traceback (most recent call last):
-  File "/mnt/geminiagent/main.py", line 44, in <module>
-    main()
-  File "/mnt/geminiagent/main.py", line 39, in main
-    final_response = agent.process_query(formatted_query)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/geminiagent/gemini_agent.py", line 366, in process_query
-    simulated_function_call = Part.from_function_call(
-                              ^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: type object 'Part' has no attribute 'from_function_call'. Did you mean: 'function_call'?
+
 
 # gemini_agent.py
 import vertexai
@@ -374,33 +364,23 @@ class GeminiAgent:
                 # Extract SQL query, removing backticks
                 sql_query = self._extract_sql_query(response.candidates[0].content.parts[0].text)
 
-                # Simulate a function call response for execute_sql_query
-                simulated_function_call = Part.from_function_call(
-                    FunctionDeclaration(
-                        name="execute_sql_query",
-                        parameters={
-                            "type": "object",
-                            "properties": {
-                                "sql_query": {
-                                    "type": "string",
-                                    "description": "The SQL query to execute.",
-                                }
-                            },
-                            "required": ["sql_query"],
-                        },
-                        args={"sql_query": sql_query},
-                    )
-                )
-                
-                # Handle the simulated function call
+                # Execute the SQL query using the function calling mechanism
                 try:
-                    function_response = self._handle_function_call(simulated_function_call)
+                    # Construct a function call response object
+                    function_call_response = Part(
+                        function_call=FunctionCall(
+                            name="execute_sql_query",
+                            args={"sql_query": sql_query}
+                        )
+                    )
+
+                    # Handle the function call as if the model had made it
+                    function_response = self._handle_function_call(function_call_response)
 
                     # Check if the function call was successful and returned results
                     if function_response.function_response.name == "execute_sql_query":
                         # Parse the results from the string representation
                         results_str = function_response.function_response.content["content"]
-
                         # Assuming results are a list of dicts, remove the leading/trailing brackets and split into dicts
                         results_str = results_str.strip("[]")  # Remove leading/trailing brackets
                         if results_str:
