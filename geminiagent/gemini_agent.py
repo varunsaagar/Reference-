@@ -196,7 +196,7 @@ class GeminiAgent:
             )
         return formatted_schema
 
-    def _generate_sql_prompt(self, user_query: str, intent: str, entity_mapping: Dict[str, List[str]]) -> str:
+    def _generate_sql_prompt(self, user_query: str, intent: str, entity_mapping: Dict[str, List[str]], error_message: str = None) -> str:
         """Generates a prompt for the Gemini model to generate a SQL query."""
 
         # Basic prompt
@@ -226,7 +226,10 @@ class GeminiAgent:
                     for column in columns:
                         prompt += f"\n- {entity_type} -> {column}"
 
-
+        # Add error message if available
+        if error_message:
+            prompt += f"\n\nPrevious SQL query generated an error: {error_message}"
+            prompt += "\nPlease fix the SQL query based on this error message."
 
         # Add instructions for SQL generation
         prompt += """
@@ -256,7 +259,6 @@ class GeminiAgent:
             """
 
         return prompt
-
 
     def _handle_function_call(self, response: Part) -> Part:
         """Handles function calls from the model."""
@@ -314,32 +316,49 @@ class GeminiAgent:
 
         return function_response
 
-    def process_query(self, user_query: str) -> str:
-        """Processes the user query using the Gemini model and function calling."""
-        # 1. Perform basic NLU
+    def process_query(self, user_query: str, max_iterations: int = 3) -> str:
+        """Processes the user query with iterative error correction."""
         intent = self._extract_intent(user_query)
         extracted_entities = self._extract_entities(user_query)
         entity_mapping = self._map_entities_to_columns(extracted_entities)
+        error_message = None
+        
+        for iteration in range(max_iterations):
+            print(f"Iteration: {iteration + 1}")
+            # Generate prompt based on user query, intent, entities, and any previous error
+            sql_prompt = self._generate_sql_prompt(user_query, intent, entity_mapping, error_message)
 
-        # 2. Generate SQL prompt
-        sql_prompt = self._generate_sql_prompt(user_query, intent, entity_mapping)
+            # Send prompt to Gemini and handle function calls
+            response = self.chat.send_message(sql_prompt)
+            print(f"Initial response: {response.candidates[0]}")
 
-        # 3. Send prompt to Gemini and handle function calls
-        response = self.chat.send_message(sql_prompt)
-        print(f"Initial response: {response.candidates[0]}")
+            while response.candidates[0].finish_reason == "TOOL":
+                print(f"Function called in loop : {response.candidates[0].finish_reason}")
+                function_response = self._handle_function_call(response.candidates[0].content.parts[0])
+                response = self.chat.send_message(function_response)
+            
+            # Check if the model generated a SQL query
+            if response.candidates[0].content.parts[0].text:
+                sql_query = response.candidates[0].content.parts[0].text
+                
+                # Execute the SQL query and check for errors
+                try:
+                    print(f"Generated SQL Query: {sql_query}")
+                    query_results = self.bq_manager.execute_query(sql_query)
+                    
+                    # If query execution is successful, return the results
+                    return str(query_results)
+                except Exception as e:
+                    error_message = f"Error executing query: {e}"
+                    print(error_message)
+                    
+                    # Update the chat history with the error for the next iteration
+                    self.chat.history.append(Part.from_text(f"Error: {error_message}"))
+                    self.chat.history.append(Part.from_text(f"Please provide the corrected SQL query for: {user_query}"))
+            else:
+                # Handle cases where no SQL query is generated
+                error_message = "No SQL query generated."
+                print(error_message)
+                return error_message
 
-        # Handle function calls iteratively
-        while response.candidates[0].finish_reason == "TOOL":
-            print(f"Function called in loop : {response.candidates[0].finish_reason}")
-            function_response = self._handle_function_call(response.candidates[0].content.parts[0])
-            response = self.chat.send_message(function_response)
-
-        try:
-            # 4. Extract and return the final response
-            final_response = response.candidates[0].content.parts[0].text
-            print(f"Final response: {final_response}")
-            return final_response
-        except (AttributeError, IndexError) as e:
-            error_message = f"Error processing response: {e}"
-            print(error_message)
-            return error_message
+        return "Max iterations reached without a successful query."
