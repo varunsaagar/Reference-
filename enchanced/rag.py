@@ -95,27 +95,21 @@ class RAGPipeline:
         """Generate SQL with enhanced context using function calling"""
         
         chat = self.model.start_chat()
-        system_prompt = (
-            "You are a SQL expert. Generate a BigQuery SQL query based on:"
-            "\n1) The user's question"
-            "\n2) The available tables and columns"
-            "\n3) The relevant context"
-            "\nReturn ONLY the SQL query without explanation."
+        
+        # Combine context into a single prompt instead of using context parameter
+        prompt = (
+            "You are a SQL expert. Generate a BigQuery SQL query based on:\n"
+            f"1) User question: {user_query}\n"
+            f"2) Available schema: {context['tables_info']}\n"
+            f"3) Relevant context: {context['similar_contexts']}\n"
+            "Return ONLY the SQL query without explanation."
         )
         
-        user_prompt = (
-            f"USER QUERY: {user_query}\n\n"
-            f"AVAILABLE SCHEMA:\n{context['tables_info']}\n\n"
-            f"RELEVANT CONTEXT:\n{context['similar_contexts']}"
-        )
-        
-        response = chat.send_message(
-            content=user_prompt,
-            context=system_prompt
-        )
-        
+        # Remove context parameter from send_message
+        response = chat.send_message(prompt)
         return response.text.strip()
-        
+    
+    
     def _execute_query(self, query: str) -> Union[List[Dict], str]:
         """Execute BigQuery SQL with error handling"""
         try:
@@ -143,21 +137,16 @@ class RAGPipeline:
         """Generate natural language response using Gemini"""
         
         chat = self.model.start_chat()
-        system_prompt = (
-            "You are a helpful assistant that explains query results in natural language."
-            "Provide a clear, concise summary of the findings."
-        )
         
-        user_prompt = (
-            f"USER QUERY: {user_query}\n\n"
-            f"SQL QUERY USED: {sql}\n\n"
-            f"QUERY RESULTS: {str(results)}\n\n"
+        # Combine all context into a single prompt
+        prompt = (
+            "You are a helpful assistant that explains query results in natural language.\n"
+            f"USER QUERY: {user_query}\n"
+            f"SQL QUERY USED: {sql}\n"
+            f"QUERY RESULTS: {str(results)}\n"
             "Please summarize these results in natural language."
         )
         
-        response = chat.send_message(
-            content=user_prompt,
-            context=system_prompt
-        )
-        
+        # Remove context parameter from send_message
+        response = chat.send_message(prompt)
         return response.text.strip()
