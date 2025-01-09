@@ -1,3 +1,42 @@
+(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
+Iteration: 1
+Initial response: content {
+  role: "model"
+  parts {
+    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm = \'Technical Support\' OR script_nm = \'Technical Support\' OR eccr_dept_nm = \'Technical Support\' OR bus_rule = \'Technical Support\' OR super_bus_rule = \'Technical Support\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.00343868209094536
+
+Extracted SQL Query (before processing): 
+Error handling function call: Part.__init__() got an unexpected keyword argument 'function_call'
+Iteration: 2
+Initial response: content {
+  role: "model"
+  parts {
+    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm = \'Technical Support\' OR script_nm = \'Technical Support\' OR eccr_dept_nm = \'Technical Support\' OR bus_rule = \'Technical Support\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.000453953498176166
+
+Extracted SQL Query (before processing): 
+Error handling function call: Part.__init__() got an unexpected keyword argument 'function_call'
+Iteration: 3
+Initial response: content {
+  role: "model"
+  parts {
+    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (acd_area_nm = \'Technical Support\' OR script_nm = \'Technical Support\' OR eccr_dept_nm = \'Technical Support\' OR bus_rule = \'Technical Support\' OR CAST(super_bus_rule as STRING) = \'Technical Support\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n\n\n"
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.0028648700099438429
+
+Extracted SQL Query (before processing): 
+Error handling function call: Part.__init__() got an unexpected keyword argument 'function_call'
+Final Response: Max iterations reached without a successful query.
+
 import vertexai
 from vertexai.generative_models import (
     FunctionDeclaration,
