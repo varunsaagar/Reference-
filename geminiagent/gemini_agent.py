@@ -1,25 +1,4 @@
 
-(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q geminiagent]$ python3 main.py
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT AVG(call_duration_seconds) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE (eccr_dept_nm = \'Technical Support\' OR script_nm LIKE \'%Technical Support%\' OR acd_area_nm LIKE \'%Technical Support%\' OR bus_rule LIKE \'%Technical Support%\') AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0086802892517625248
-
-Generated SQL Query: 
-Error executing query: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/vz-it-np-ienv-test-vegsdo-0/jobs?prettyPrint=false: Required parameter is missing: query
-
-Location: None
-Job ID: 81cb8b48-933a-4bdd-9517-958efad37e4e
-
-Final Response: None
-
-
-
 # gemini_agent.py
 import vertexai
 from vertexai.generative_models import (
@@ -351,8 +330,10 @@ class GeminiAgent:
         match = re.search(r"`(sql)?\s*(.*?)\s*`", response_text, re.DOTALL)
         if match:
             sql_query = match.group(2).strip()
+            print(f"Extracted SQL Query (before processing): {sql_query}")  # Debug print
             return sql_query
         else:
+            print(f"No SQL query found in response: {response_text}") # Debug print
             return response_text
 
     def process_query(self, user_query: str, max_iterations: int = 3) -> str:
@@ -383,11 +364,14 @@ class GeminiAgent:
 
                 # Execute the SQL query and check for errors
                 try:
-                    print(f"Generated SQL Query: {sql_query}")
+                    print(f"Generated SQL Query: {sql_query}") # Print before execution
+
+                    # Pass the extracted SQL query directly for execution
                     query_results = self.bq_manager.execute_query(sql_query)
 
                     # If query execution is successful, return the results
                     return str(query_results)
+
                 except Exception as e:
                     error_message = f"Error executing query: {e}"
                     print(error_message)
