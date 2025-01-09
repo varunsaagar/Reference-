@@ -27,12 +27,18 @@ class RAGPipeline:
             execute_query_func
         ])
         
+        # Initialize model with more conservative settings
         self.model = GenerativeModel(
             "gemini-1.5-pro",
-            generation_config={"temperature": 0},
+            generation_config={
+                "temperature": 0,
+                "top_p": 0.8,
+                "top_k": 40,
+                "max_output_tokens": 1024,
+            },
             tools=[self.tools]
         )
-        
+
     def process_query(self, user_query: str) -> str:
         """Process user query through the RAG pipeline"""
         
@@ -86,28 +92,6 @@ class RAGPipeline:
         
         results = self.client.query(query).result()
         return {row['table_name']: dict(row) for row in results}
-
-    def _generate_sql(
-        self,
-        user_query: str,
-        context: Dict
-    ) -> str:
-        """Generate SQL with enhanced context using function calling"""
-        
-        chat = self.model.start_chat()
-        
-        # Combine context into a single prompt instead of using context parameter
-        prompt = (
-            "You are a SQL expert. Generate a BigQuery SQL query based on:\n"
-            f"1) User question: {user_query}\n"
-            f"2) Available schema: {context['tables_info']}\n"
-            f"3) Relevant context: {context['similar_contexts']}\n"
-            "Return ONLY the SQL query without explanation."
-        )
-        
-        # Remove context parameter from send_message
-        response = chat.send_message(prompt)
-        return response.text.strip()
     
     
     def _execute_query(self, query: str) -> Union[List[Dict], str]:
@@ -128,6 +112,47 @@ class RAGPipeline:
         except Exception as e:
             return f"ERROR: {str(e)}"
             
+    def _generate_sql(
+        self,
+        user_query: str,
+        context: Dict
+    ) -> str:
+        """Generate SQL with enhanced context using function calling"""
+        
+        try:
+            chat = self.model.start_chat()
+            
+            # Combine context into a single prompt
+            prompt = (
+                "You are a SQL expert. Generate a BigQuery SQL query based on:\n"
+                f"1) User question: {user_query}\n"
+                f"2) Available schema: {context['tables_info']}\n"
+                f"3) Relevant context: {context['similar_contexts']}\n"
+                "Return ONLY the SQL query without explanation."
+            )
+            
+            # Add retry logic and error handling
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = chat.send_message(prompt)
+                    if hasattr(response, 'text') and response.text:
+                        return response.text.strip()
+                    else:
+                        print(f"Empty response on attempt {attempt + 1}")
+                        time.sleep(1)  # Add delay between retries
+                except Exception as e:
+                    print(f"Error on attempt {attempt + 1}: {str(e)}")
+                    if attempt == max_retries - 1:
+                        raise
+                    time.sleep(1)
+                    
+            return "SELECT 1"  # Fallback query if all retries fail
+            
+        except Exception as e:
+            print(f"Error generating SQL: {str(e)}")
+            return "SELECT 1"  # Fallback query
+    
     def _generate_response(
         self,
         user_query: str,
@@ -136,17 +161,37 @@ class RAGPipeline:
     ) -> str:
         """Generate natural language response using Gemini"""
         
-        chat = self.model.start_chat()
-        
-        # Combine all context into a single prompt
-        prompt = (
-            "You are a helpful assistant that explains query results in natural language.\n"
-            f"USER QUERY: {user_query}\n"
-            f"SQL QUERY USED: {sql}\n"
-            f"QUERY RESULTS: {str(results)}\n"
-            "Please summarize these results in natural language."
-        )
-        
-        # Remove context parameter from send_message
-        response = chat.send_message(prompt)
-        return response.text.strip()
+        try:
+            chat = self.model.start_chat()
+            
+            # Combine all context into a single prompt
+            prompt = (
+                "You are a helpful assistant that explains query results in natural language.\n"
+                f"USER QUERY: {user_query}\n"
+                f"SQL QUERY USED: {sql}\n"
+                f"QUERY RESULTS: {str(results)}\n"
+                "Please summarize these results in natural language."
+            )
+            
+            # Add retry logic
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = chat.send_message(prompt)
+                    if hasattr(response, 'text') and response.text:
+                        return response.text.strip()
+                    else:
+                        print(f"Empty response on attempt {attempt + 1}")
+                        time.sleep(1)
+                except Exception as e:
+                    print(f"Error on attempt {attempt + 1}: {str(e)}")
+                    if attempt == max_retries - 1:
+                        raise
+                    time.sleep(1)
+                    
+            return "Unable to generate response"  # Fallback response
+            
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            return "Unable to generate response"
+    
