@@ -1,13 +1,3 @@
-Enter your question (or 'quit' to exit): Find the number of first time callers on Jun 1st who did not call before in the last 30 days
-
-Processing query through RAG pipeline...
-
-Error getting context: 400 Unable to submit request because it must have a text parameter. Add a text parameter and try again. Learn more: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini
-Error generating SQL: 'NoneType' object has no attribute 'name'
-
-=== RESPONSE ===
-The query failed to execute. This is because the provided SQL query is invalid. It only contains "SELECT 1", which doesn't specify any table or condition to query data from. To fix this, you need to write a valid SQL query that selects data from a specific table based on certain criteria.
-
 
 ###############################################################################
 # RAG PIPELINE
@@ -82,25 +72,33 @@ class RAGPipeline:
             # Get table information using function calling
             chat = self.model.start_chat()
             
-            # List available tables
-            tables_response = chat.send_message(
-                Part.from_function_response(
-                    name="list_tables",
-                    response={"dataset_id": BIGQUERY_DATASET_ID}
-                )
+            # List tables using function calling
+            list_tables_message = {
+                "dataset_id": BIGQUERY_DATASET_ID
+            }
+            
+            response = chat.send_message(
+                "List the tables in the dataset",
+                tools=[Tool(function_declarations=[list_tables_func])]
             )
             
             # Get schema for each table
             tables_info = {}
-            for table in tables_response.text.strip().split(','):
-                table_id = f"{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{table.strip()}"
-                schema_response = chat.send_message(
-                    Part.from_function_response(
-                        name="get_schema",
-                        response={"table_id": table_id}
+            if hasattr(response.candidates[0].content.parts[0], 'function_call'):
+                tables = response.candidates[0].content.parts[0].function_call.args.get('tables', [])
+                
+                for table in tables:
+                    schema_message = {
+                        "table_id": f"{BIGQUERY_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{table}"
+                    }
+                    
+                    schema_response = chat.send_message(
+                        f"Get schema for table {table}",
+                        tools=[Tool(function_declarations=[get_schema_func])]
                     )
-                )
-                tables_info[table.strip()] = json.loads(schema_response.text)
+                    
+                    if hasattr(schema_response.candidates[0].content.parts[0], 'function_call'):
+                        tables_info[table] = schema_response.candidates[0].content.parts[0].function_call.args
             
             return {
                 "similar_contexts": similar_items,
@@ -111,6 +109,7 @@ class RAGPipeline:
             print(f"Error getting context: {str(e)}")
             return {"similar_contexts": [], "tables_info": {}}
 
+
     def _generate_sql(self, user_query: str, context: Dict) -> str:
         """Generate SQL using function calling"""
         try:
@@ -120,17 +119,17 @@ class RAGPipeline:
                 "Generate a BigQuery SQL query based on:\n"
                 f"USER QUESTION: {user_query}\n"
                 f"AVAILABLE SCHEMA: {json.dumps(context['tables_info'], indent=2)}\n"
-                f"RELEVANT CONTEXT: {context['similar_contexts']}\n"
+                f"RELEVANT CONTEXT: {json.dumps(context['similar_contexts'], indent=2)}\n"
                 "Return ONLY the SQL query."
             )
             
-            response = chat.send_message(prompt)
+            response = chat.send_message(
+                prompt,
+                tools=[Tool(function_declarations=[execute_query_func])]
+            )
             
-            # Check if response contains function call
             if hasattr(response.candidates[0].content.parts[0], 'function_call'):
-                function_call = response.candidates[0].content.parts[0].function_call
-                if function_call.name == "execute_query":
-                    return function_call.args['query']
+                return response.candidates[0].content.parts[0].function_call.args.get('query', 'SELECT 1')
             
             return response.text.strip()
             
@@ -138,22 +137,26 @@ class RAGPipeline:
             print(f"Error generating SQL: {str(e)}")
             return "SELECT 1"
 
+
     def _execute_query(self, query: str) -> Union[List[Dict], str]:
         """Execute query using function calling"""
         try:
             chat = self.model.start_chat()
+            
             response = chat.send_message(
-                Part.from_function_response(
-                    name="execute_query",
-                    response={"query": query}
-                )
+                f"Execute this SQL query: {query}",
+                tools=[Tool(function_declarations=[execute_query_func])]
             )
             
-            results = json.loads(response.text)
-            return results if isinstance(results, list) else []
+            if hasattr(response.candidates[0].content.parts[0], 'function_call'):
+                query_result = self.client.query(query).result()
+                return [dict(row) for row in query_result]
+            
+            return []
             
         except Exception as e:
             return f"Error executing query: {str(e)}"
+
 
     def _generate_response(self, user_query: str, sql: str, results: List[Dict]) -> str:
         """Generate natural language response"""
