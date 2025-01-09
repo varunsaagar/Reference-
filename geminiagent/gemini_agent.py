@@ -1,4 +1,3 @@
-
 # gemini_agent.py
 import vertexai
 from vertexai.generative_models import (
@@ -111,7 +110,8 @@ class GeminiAgent:
                 "required": ["sql_query"],
             },
         )
-
+        
+        # Add new function declaration for getting distinct values
         self.get_distinct_values_func = FunctionDeclaration(
             name="get_distinct_column_values",
             description="Get a sample of distinct values from a specified column in the table.",
@@ -137,10 +137,10 @@ class GeminiAgent:
             function_declarations=[
                 self.get_table_schema_func,
                 self.execute_sql_query_func,
-                self.get_distinct_values_func,  # Add the new function
+                self.get_distinct_values_func,
             ],
         )
-        
+
         # Initialize the Gemini model
         self.model = GenerativeModel(
             "gemini-1.5-pro-002",
@@ -199,22 +199,22 @@ class GeminiAgent:
 
     def _generate_sql_prompt(self, user_query: str, intent: str, entity_mapping: Dict[str, List[str]], error_message: str = None) -> str:
         """Generates a prompt for the Gemini model to generate a SQL query."""
-    
+
         # Get the fully qualified table name
         full_table_name = f"`{self.project_id}.{self.dataset_id}.{self.table_id}`"
-    
+
         # Basic prompt
         prompt = f"""
         You are a helpful assistant that can convert natural language into SQL queries for Bigquery.
-    
+
         You have access to the following BigQuery table:
         {full_table_name}
         {self.formatted_table_schema}
-    
+
         Convert the following natural language query into a SQL query:
         {user_query}
         """
-        
+
         # Add intent information
         prompt += f"\nIdentified intent: {intent}"
 
@@ -257,10 +257,10 @@ class GeminiAgent:
             prompt += """
             Examples:
             Question: How many calls were abandoned yesterday?
-            SQL: SELECT COUNT(*) FROM `icm_summary_fact_exp` WHERE DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AND abandons_cnt > 0
+            SQL: SELECT COUNT(*) FROM `vz-it-pr-gk1v-cwlsdo-0.vzw_uda_prd_tbls_rd_v.icm_summary_fact_exp` WHERE DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AND abandons_cnt > 0
 
             Question: What is the average handle time for calls from the 'billing' department last week?
-            SQL: SELECT AVG(handle_tm_seconds) FROM `icm_summary_fact_exp` WHERE eccr_dept_nm = 'billing' AND call_end_dt BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 8 DAY) AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+            SQL: SELECT AVG(handle_tm_seconds) FROM `vz-it-pr-gk1v-cwlsdo-0.vzw_uda_prd_tbls_rd_v.icm_summary_fact_exp` WHERE eccr_dept_nm = 'billing' AND call_end_dt BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 8 DAY) AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
             """
 
         return prompt
@@ -336,7 +336,6 @@ class GeminiAgent:
             print(f"No SQL query found in response: {response_text}")
             return ""
 
-
     def process_query(self, user_query: str, max_iterations: int = 3) -> str:
         """Processes the user query with iterative error correction."""
         intent = self._extract_intent(user_query)
@@ -365,14 +364,11 @@ class GeminiAgent:
 
                 # Execute the SQL query and check for errors
                 try:
-                    print(f"Generated SQL Query: {sql_query}") # Print before execution
-
-                    # Pass the extracted SQL query directly for execution
+                    print(f"Generated SQL Query: {sql_query}")
                     query_results = self.bq_manager.execute_query(sql_query)
 
                     # If query execution is successful, return the results
                     return str(query_results)
-
                 except Exception as e:
                     error_message = f"Error executing query: {e}"
                     print(error_message)
