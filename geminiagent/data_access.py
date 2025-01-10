@@ -1,8 +1,7 @@
 from google.cloud import bigquery
 from google.api_core import exceptions
 
-Query results: [{'eccr_dept_nm': 'Ignore Department', 'num_abandoned_calls': 5, 'avg_time_to_abandon': 17.88235294117647, 'min_time_to_abandon': 0, 'max_time_to_abandon': 265}, {'eccr_dept_nm': 'LNP Wireline Ticket', 'num_abandoned_calls': 0, 'avg_time_to_abandon': 0.0, 'min_time_to_abandon': 0, 'max_time_to_abandon': 0}, {'eccr_dept_nm': 'CORe', 'num_abandoned_calls': 0, 'avg_time_to_abandon': 0.0, 'min_time_to_abandon': 0, 'max_time_to_abandon': 0}, {'eccr_dept_nm': 'LNP General Ticket', 'num_abandoned_calls': 3, 'avg_time_to_abandon': 68.41509433962264, 'min_time_to_abandon': 0, 'max_time_to_abandon': 2705}, {'eccr_dept_nm': 'Tech', 'num_abandoned_calls': 0, 'avg_time_to_abandon': 0.0, 'min_time_to_abandon': 0, 'max_time_to_abandon': 0}, {'eccr_dept_nm': 'Care', 'num_abandoned_calls': 12, 'avg_time_to_abandon': 21.551020408163293, 'min_time_to_abandon': 0, 'max_time_to_abandon': 867}, {'eccr_dept_nm': 'Bilingual', 'num_abandoned_calls': 0, 'avg_time_to_abandon': 0.0, 'min_time_to_abandon': 0, 'max_time_to_abandon': 0}, {'eccr_dept_nm': 'Inside Sales', 'num_abandoned_calls': 1, 'avg_time_to_abandon': 9.317073170731708, 'min_time_to_abandon': 0, 'max_time_to_abandon': 382}, {'eccr_dept_nm': 'Business Inside Sales', 'num_abandoned_calls': 0, 'avg_time_to_abandon': 0.0, 'min_time_to_abandon': 0, 'max_time_to_abandon': 0}, {'eccr_dept_nm': 'LNP', 'num_abandoned_calls': 0, 'avg_time_to_abandon': 0.0, 'min_time_to_abandon': 0, 'max_time_to_abandon': 0}]
-Final Response: Here are the results of your query: ... 
+
 class BigQueryManager:
     def __init__(self, project_id, dataset_id):
         # Only project and dataset in init
