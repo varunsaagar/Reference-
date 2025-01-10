@@ -115,53 +115,8 @@ class GeminiAgent:
 
         except (json.JSONDecodeError, AttributeError):
             print(f"Error decoding intent/entity extraction response: {response.text}")
-            return "general_query", {}
-          
-    def _select_relevant_columns(self, user_query: str) -> List[str]:
-        """
-        Uses the Gemini model to select relevant columns for answering the user query.
-        """
-        prompt = self._generate_column_selection_prompt(user_query)
-        response = self.model.generate_content(prompt)
-        try:
-            # Remove `json and ` from the response if they exist
-            response_text = response.text.strip()
-            if response_text.startswith("```json"):
-                response_text = response_text[7:]
-            if response_text.endswith("```"):
-                response_text = response_text[:-3]
-
-            
-            # Attempt to parse the response as JSON
-            try:
-                response_json = json.loads(response_text)
-                columns = response_json.get("columns", [])
-            except json.JSONDecodeError:
-                # If JSON parsing fails, assume it's a comma-separated list (original logic)
-                columns = [
-                    col.strip() for col in response_text.split(",") if col.strip()
-                ]
-                
-            
-            # Check if elements in the list are column names or descriptions, and extract column names if necessary
-            final_columns = []
-            for item in columns:
-                if '.' in item:  # Assuming column names are in the format 'table.column'
-                    final_columns.append(item)
-                else:
-                    # Extract column names from descriptions if present
-                    match = re.search(r"\*\*([a-zA-Z0-9_]+)\*\*:", item)
-                    if match:
-                        final_columns.append("icm_summary_fact_exp." + match.group(1))
-            
-            print(f"Selected columns before : {columns}")
-            print(f"Selected columns after : {final_columns}")
-            return final_columns
-
-        except (AttributeError, TypeError):
-            print(f"Error processing column selection response: {response.text}")
-            return []
-
+            return "general_query", {}          
+    
     def _map_entities_to_columns_agentic(self, extracted_entities: Dict[str, List[str]]) -> Dict[str, List[str]]:
         """
         Agentically maps extracted entities to their corresponding database columns using the Gemini model.
@@ -351,6 +306,22 @@ class GeminiAgent:
         Provide the output as a comma-separated list of column names.
         """
         return prompt
+        
+    def _select_relevant_columns(self, user_query: str) -> List[str]:
+        """
+        Uses the Gemini model to select relevant columns for answering the user query.
+        """
+        prompt = self._generate_column_selection_prompt(user_query)
+        response = self.model.generate_content(prompt)
+        try:
+            # Assuming the model returns a comma-separated list of column names
+            columns = [
+                col.strip() for col in response.text.split(",") if col.strip()
+            ]
+            return columns
+        except (AttributeError, TypeError):
+            print(f"Error processing column selection response: {response.text}")
+            return []
 
 
     def _handle_function_call(self, response: Part) -> Part:
