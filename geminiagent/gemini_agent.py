@@ -543,156 +543,160 @@ class GeminiAgent:
 
     column_selection_examples = [
         {
-            "context": "\n  Table Name: weather\n  This table has the following columns :\n     1. date\n        This column is of type TEXT and is nullable.\n     2. max_temperature_f\n        This column is of type INTEGER and is nullable.\n     3. mean_temperature_f\n        This column is of type INTEGER and is nullable.\n     4. min_temperature_f\n        This column is of type INTEGER and is nullable.\n     5. max_dew_point_f\n        This column is of type INTEGER and is nullable.\n     6. mean_dew_point_f\n        This column is of type INTEGER and is nullable.\n     7. min_dew_point_f\n        This column is of type INTEGER and is nullable.\n     8. max_humidity\n        This column is of type INTEGER and is nullable.\n     9. mean_humidity\n        This column is of type INTEGER and is nullable.\n     10. min_humidity\n        This column is of type INTEGER and is nullable.\n     11. max_sea_level_pressure_inches\n        This column is of type NUMERIC and is nullable.\n     12. mean_sea_level_pressure_inches\n        This column is of type NUMERIC and is nullable.\n     13. min_sea_level_pressure_inches\n        This column is of type NUMERIC and is nullable.\n     14. max_visibility_miles\n        This column is of type INTEGER and is nullable.\n     15. mean_visibility_miles\n        This column is of type INTEGER and is nullable.\n     16. min_visibility_miles\n        This column is of type INTEGER and is nullable.\n     17. max_wind_Speed_mph\n        This column is of type INTEGER and is nullable.\n     18. mean_wind_speed_mph\n        This column is of type INTEGER and is nullable.\n     19. max_gust_speed_mph\n        This column is of type INTEGER and is nullable.\n     20. precipitation_inches\n        This column is of type INTEGER and is nullable.\n     21. cloud_cover\n        This column is of type INTEGER and is nullable.\n     22. events\n        This column is of type TEXT and is nullable.\n     23. wind_dir_degrees\n        This column is of type INTEGER and is nullable.\n     24. zip_code\n        This column is of type INTEGER and is nullable.\n",
-            "question": "What are the date, mean temperature, mean rainfall and mean humidity for the top 3 days with the largest max gust speeds and lowest average snowfall",
+            "context": """
+            Table Name: icm_summary_fact_exp
+            This table has the following columns:
+            1. recoverykey: STRING (The unique identifier for the customer's recovery key.)
+            2. ivr_call_id: STRING (A unique identifier for the call in the Interactive Voice Response (IVR) system.)
+            3. acd_area_nm: STRING (Automatic Call Delivery area name of the caller, ie IVR Queue Name/Department Example - Prepay,SPC,WestCentral,Federal Accounts etc. Area code nulls indicate Internal)
+            4. call_end_dt: DATE (The date and time when the call ended.)
+            5. call_end_tm: TIME (The time the call ended.)
+            6. call_answer_tm: STRING (Time it took for the call to be answered in seconds.)
+            7. route_value: STRING (The value of the route that was used to direct the call.)
+            8. icm_acct_type_cd: STRING (The ICM (Intelligent Contact Manager) account type code identifies the type of account that the caller has.)
+            9. eqp_prod_id: STRING (The equipment product ID of the caller's device.)
+            10. cust_value: STRING (Value of the customer to Verizon Wireless, based on factors such as their usage patterns, loyalty, and profitability.)
+            11. lang_pref_ind: STRING (The language preference indicator identifies the preferred language of the caller.)
+            12. cacs_state_cd: STRING (The state of the customer's account in the Computer Assisted Collection System (CACS).)
+            13. first_bill_cd: STRING (The first bill code associated with the call.)
+            14. onstar_ind: STRING (Indicator for whether the call was made through OnStar.)
+            15. transfer_point: STRING (The point at which the call was transferred to another agent.)
+            16. onebill_ind: STRING (An indicator that specifies whether the customer is enrolled in the One Bill program.)
+            17. high_risk_ind: STRING (Indicates whether the call was high-risk.)
+            18. cacs_work_state_cd: STRING (Code indicating the work state of the Computer Assisted Collection System (CACS) at the time of the call.)
+            19. ivr_cust_src_cd: STRING (The source of the customer's call to the Interactive Voice Response (IVR) system.)
+            20. bus_rule: STRING (The business rule that was applied to the customer's account.)
+            21. script_nm: STRING (The name of the script that was used to handle the customer's call.)
+            22. eccr_line_bus_nm: STRING (ECCR line business name.)
+            23. eccr_super_line_bus_nm: STRING (The name of the business unit that owns the ECCR super line.)
+            24. eccr_dept_nm: STRING (The name of the Enterprise Contact Center Reporting (ECCR) department. Call centers agents are mapped to department to handle appropriate calls based on their specialization)
+            25. mtn: STRING (The mobile telephone number of the caller.)
+            26. eccr_call_ctr_cd: STRING (The enterprise contact center reporting (ECCR) call center code identifies the call center that handled the call.)
+            27. acd_appl_id: INT64 (The identifier of the Automatic Call Delivery (ACD) application that was used to route the call.)
+            28. agent_group_id: INT64 (The identifier of the agent group that handled the call.)
+            29. callers_region: STRING (The region of the caller.)
+            30. transfer_flag: STRING (Indicates whether the call was transferred.)
+            31. final_call_dispo: INT64 (The final disposition of the call, indicating the outcome of the call attempt. Possible values include 'ANSWERED', 'BUSY', 'FAILED', 'NO ANSWER', and 'UNKNOWN'.)
+            32. call_dispo_flag: INT64 (A flag that indicates the disposition of the call, such as whether it was answered, abandoned, or transferred.)
+            33. peripheral_call_type: INT64 (The type of peripheral call.)
+            34. final_object_id: INT64 (The final object ID associated with the call.)
+            35. call_duration_seconds: INT64 (The duration of the call, in seconds.)
+            36. ring_tm_seconds: INT64 (The ring time in seconds is the amount of time that the phone rang before the caller answered.)
+            37. delay_tm_seconds: INT64 (The delay time in seconds is the additional time that has been requested for response.)
+            38. time_to_aband_seconds: INT64 (The time it took for the caller to abandon the call, in seconds.)
+            39. hold_tm_seconds: INT64 (The hold time in seconds is the amount of time that the caller spent on hold during the call.)
+            40. talk_tm_seconds: INT64 (Total talk time for the call in seconds.)
+            41. work_tm_seconds: INT64 (The total amount of time spent on the call, in seconds, including talk time, hold time, and other activities.)
+            42. local_q_tm_seconds: INT64 (The local queue time in seconds is the amount of time that the caller spent in the queue before their call was answered.)
+            43. handle_tm_seconds: INT64 (The total time in seconds that the call was handled.)
+            44. delay_answer_seconds: INT64 (The amount of time, in seconds, that the call was delayed before being answered by an agent.)
+            45. call_offered_cnt: INT64 (The number of times the call was offered to an agent.)
+            46. answer_half_hr: INT64 (The time it took to answer the call, in half-hour increments.)
+            47. abandons_cnt: INT64 (The number of abandoned calls. Values 0, 1)
+            48. answered_cnt: INT64 (Indicator to denote if the call was answered or not)
+            49. ansr_30_cnt: INT64 (The number of calls that were answered within 30 seconds.)
+            50. ansr_30_to_40_cnt: INT64 (The number of calls that were answered within 30 to 40 seconds.)
+            51. tm_zone_offset: INT64 (The time zone offset of the caller.)
+            52. callcenterid: INT64 (Identifier for the call center that handled the call.)
+            53. sor_id: STRING (Identifier for the source system of record that is populating the data warehouse instance. Always use 'V')
+            54. cust_id: STRING (The unique identifier for the customer.)
+            55. cust_line_seq_id: STRING (The sequence ID of the customer line.)
+            56. acss_call_id: STRING (The unique identifier for the call in the Automated Customer Support System (ACSS).)
+            57. callcenterid_agent: INT64 (The call center ID of the agent who handled the call.)
+            58. acd_area_nm_agent: STRING (The ACD (Automatic Call Delivery) area name agent identifies the area of the call center that handled the call.)
+            59. eccr_line_bus_nm_agent: STRING (Enterprise Contact Center Reporting Line Business Name Agent (Eccr Line Bus Nm Agent) identifies the business unit or line of business associated with the agent who handled the call, providing context on the agent's area of expertise or specialization.)
+            60. eccr_dept_nm_agent: STRING (The ECCR (Enterprise Contact Center Reporting) department name agent identifies the department of the call center that handled the call.)
+            61. rep_type_cd: STRING (Indicates the type of representative who handled the call, such as a customer service representative, technical support representative, or sales representative.)
+            62. ecc_sm_ind: STRING (An indicator that specifies whether the call was handled by the Ebonding Collaboration Center (ECC) Switching Module (SM).)
+            63. eid: STRING (The Endpoint Identifier assigned to the customer.)
+            64. call_answer_dt: DATE (The call answer date is the date on which the call was answered.)
+            65. routercallkeyday: INT64 (router call key day)
+            66. routercallkey: STRING (router call key)
+            67. super_bus_rule: STRING (super busines rule name)
+            68. super_skill_group: STRING (super skill group name)
+            69. super_call_type_cd: STRING (name of super call type)
+            70. dev_cat_cd: STRING (dev category code)
+            71. hpr_cd: STRING (high priority code)
+            72. specialization_cd: STRING (specialization code)
+            73. client_channel_cd: STRING (client channel code)
+            74. client_application_cd: STRING (client application code)
+            75. call_status: STRING (call status)
+            76. call_reas_cd: STRING (call reason code)
+            77. orig_ivr_call_id: STRING (original ivr call identifier)
+            """,
+            "question": "What was the average call duration for technical support calls yesterday?",
             "thoughts": [
-                "The table seems to describe various weather attributes for each day for each zip code, and the question is asking about certain weather attributes under specific conditions.",
-                "The question mentions \"date\", and the table contains date information in the \"date\" column.",
-                "The question mentions \"mean temperature\" and the information about average temperatures is present in the column \"mean_temperature_f\".",
-                "The question mentions \"mean rainfall\", but the table does not contain any information about rainfall.",
-                "The question mentions \"mean humidity\" and the information about average humidity is present in the column \"mean_humidity\".",
-                "The question mentions \"top 3 days\", and the information about days and dates is present in the column \"date\".",
-                "The question mentions \"largest max gust speeds\", and the inormation about gust speeds is present in the column \"max_gust_speed_mph\".",
-                "The question mentions \"average snowfall\", but the table does not contain information about snowfall.",
+                "The question is asking for a metric (average call duration) related to a specific type of call (technical support) on a specific day (yesterday).",
+                "The table 'icm_summary_fact_exp' seems to contain call-related data, and it has columns related to call duration, call type, and date.",
+                "The 'call_duration_seconds' column likely contains the duration of each call.",
+                "The 'eccr_dept_nm' column could contain information about the department, such as 'technical support'.",
+                "The 'call_end_dt' column contains the date when the call ended, which can be used to filter for 'yesterday'.",
             ],
-            "answer": "weather.date, weather.mean_humidity, weather.mean_temperature_f, weather.max_gust_speed_mph",
+            "answer": "icm_summary_fact_exp.call_duration_seconds, icm_summary_fact_exp.eccr_dept_nm, icm_summary_fact_exp.call_end_dt",
         },
         {
-            "context": "\n  Table Name: races\n  This table has the following columns :\n     1. raceId\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. year\n        This column is of type INTEGER and is nullable.\n     3. round\n        This column is of type INTEGER and is nullable.\n     4. circuitId\n        This column is of type INTEGER and is nullable.\n     5. name\n        This column is of type TEXT and is nullable.\n     6. date\n        This column is of type TEXT and is nullable.\n     7. time\n        This column is of type TEXT and is nullable.\n     8. url\n        This column is of type TEXT and is nullable.\n",
-            "question": "Give me a list of names and years of races that had any driver whose forename is Lewis?",
+            "context": """
+            Table Name: icm_summary_fact_exp
+            This table has the following columns:
+            (Refer to previous definition for column details)
+            """,
+            "question": "How many calls were abandoned yesterday?",
             "thoughts": [
-                "The table seems to describe various details for each race, and the question is asking about details of races which had drivers with a certain forename.",
-                "The question mentions \"names\" and the information about name is present in the column \"name\".",
-                "The question mentions \"years\" and the information about year is present in the column \"year\".",
-                "The question mentions \"forename\" and the information about forename is present in the column \"name\".",
+                "The question is asking for a count of a specific type of call (abandoned calls) on a specific day (yesterday).",
+                "The table 'icm_summary_fact_exp' seems to contain call-related data, including information about whether a call was abandoned.",
+                "The 'abandons_cnt' column likely indicates whether a call was abandoned (it is mentioned that it has values 0 or 1).",
+                "The 'call_end_dt' column contains the date when the call ended, which can be used to filter for 'yesterday'.",
             ],
-            "answer": "races.year, races.name, races.raceid",
+            "answer": "icm_summary_fact_exp.abandons_cnt, icm_summary_fact_exp.call_end_dt",
         },
         {
-            "context": "\n  Table Name: wine\n  This table has the following columns :\n     1. No\n        This column is of type INTEGER and is nullable.\n     2. Grape\n        This column is of type TEXT and is nullable.\n     3. Winery\n        This column is of type TEXT and is nullable.\n     4. Appelation\n        This column is of type TEXT and is nullable.\n     5. State\n        This column is of type TEXT and is nullable.\n     6. Name\n        This column is of type TEXT and is nullable.\n     7. Year\n        This column is of type INTEGER and is nullable.\n     8. Price\n        This column is of type INTEGER and is nullable.\n     9. Score\n        This column is of type INTEGER and is nullable.\n     10. Cases\n        This column is of type INTEGER and is nullable.\n     11. Drink\n        This column is of type TEXT and is nullable.\n",
-            "question": "What are the names and scores of wines that are made of white color grapes?",
+            "context": """
+            Table Name: icm_summary_fact_exp
+            This table has the following columns:
+            (Refer to previous definition for column details)
+            """,
+            "question": "How many calls were received for billing last month?",
             "thoughts": [
-                "The table seems to describe various wine attributes for each wine and the question is asking about names and scores of wine based on certain criteria.",
-                "The question mentions \"names\", and the table contains names information in the \"name\" column.",
-                "The question mentions \"scores\", and the table contains score information in the \"score\" column.",
-                "The question mentions \"white color grapes\", and the table contains grapes information in the \"grape\" column.",
+                "The question is asking for a count of calls related to a specific department (billing) in a specific time period (last month).",
+                "The table 'icm_summary_fact_exp' contains call-related data, including information about the department and the date.",
+                "The 'eccr_dept_nm' column likely contains the department name, such as 'billing'.",
+                "The 'call_end_dt' column contains the date when the call ended, which can be used to filter for 'last month'.",
+                "The 'answered_cnt' column can be used to count calls.",
             ],
-            "answer": "wine.score, wine.name, wine.grape",
+            "answer": "icm_summary_fact_exp.eccr_dept_nm, icm_summary_fact_exp.call_end_dt, icm_summary_fact_exp.answered_cnt",
         },
         {
-            "context": "\n  Table Name: Reservations\n  This table has the following columns :\n     1. Code\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. Room\n        This column is of type TEXT and is nullable.\n     3. CheckIn\n        This column is of type TEXT and is nullable.\n     4. CheckOut\n        This column is of type TEXT and is nullable.\n     5. Rate\n        This column is of type REAL and is nullable.\n     6. LastName\n        This column is of type TEXT and is nullable.\n     7. FirstName\n        This column is of type TEXT and is nullable.\n     8. Adults\n        This column is of type INTEGER and is nullable.\n     9. Kids\n        This column is of type INTEGER and is nullable.\n",
-            "question": "Which room has the highest rate? List the room's full name, rate, check in and check out date.",
+            "context": """
+            Table Name: icm_summary_fact_exp
+            This table has the following columns:
+            (Refer to previous definition for column details)
+            """,
+            "question": "What was the average call handling time for billing inquiries in the last week, broken down by agent?",
             "thoughts": [
-                "The table seems to describe reservation details of a hotel for each booking and the question is asking about details of room with the highest rate.",
-                "The question mentions \"rate\", and the table contains room rate information in the \"rate\" column.",
-                "The question mentions \"room's full name\", and the table contains room name information in the \"room\" column.",
-                "The question mentions \"check in\", and the table contains check in information in the \"checkin\" column.",
-                "The question mentions \"check out date\", and the table contains check out information in the \"checkout\" column.",
+                "The question is asking for a metric (average call handling time) for a specific type of call (billing inquiries) in a specific time period (last week), grouped by agent.",
+                "The table 'icm_summary_fact_exp' contains call-related data, including information about handling time, department, agent, and date.",
+                "The 'handle_tm_seconds' column likely contains the call handling time.",
+                "The 'eccr_dept_nm' column could contain information about the department, such as 'billing'.",
+                "The 'eid' column likely represents the agent ID.",
+                "The 'call_end_dt' column contains the date when the call ended, which can be used to filter for 'last week'.",
             ],
-            "answer": "reservations.checkout, reservations.rate, reservations.room, reservations.checkin",
+            "answer": "icm_summary_fact_exp.handle_tm_seconds, icm_summary_fact_exp.eccr_dept_nm, icm_summary_fact_exp.eid, icm_summary_fact_exp.call_end_dt",
         },
         {
-            "context": "\n  Table Name: Staff\n  This table has the following columns :\n     1. staff_id\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. staff_address_id\n        This column is of type INTEGER and is Non nullable.\n     3. nickname\n        This column is of type VARCHAR(80) and is nullable.\n     4. first_name\n        This column is of type VARCHAR(80) and is nullable.\n     5. middle_name\n        This column is of type VARCHAR(80) and is nullable.\n     6. last_name\n        This column is of type VARCHAR(80) and is nullable.\n     7. date_of_birth\n        This column is of type DATETIME and is nullable.\n     8. date_joined_staff\n        This column is of type DATETIME and is nullable.\n     9. date_left_staff\n        This column is of type DATETIME and is nullable.\n",
-            "question": "Which country and state does staff with first name as Janessa and last name as Sawayn lived?",
+            "context": """
+            Table Name: icm_summary_fact_exp
+            This table has the following columns:
+            (Refer to previous definition for column details)
+            """,
+            "question": "Find the number of abandoned calls based on department for the latest available information but exclude prepay calls.",
             "thoughts": [
-                "The table seems to describe staff details for each staff, and the question is asking about country and state details based on certain conditions.",
-                "The question mentions \"country and state\", and the table contains address information in the \"address_id\" column.",
-                "The question mentions \"staff with first name\", and the table contains first name information in the \"first_name\" column.",
-                "The question mentions \"last name\", and the table contains last name information in the \"last_name\" column.",
+                "The question is asking for a count of a specific type of call (abandoned calls) grouped by department, excluding a certain category (prepay calls) and considering only the latest available data.",
+                "The table 'icm_summary_fact_exp' contains call-related data, including information about call disposition, department, and date.",
+                "The 'abandons_cnt' column indicates whether a call was abandoned.",
+                "The 'eccr_dept_nm' column likely contains the department name.",
+                "The 'acd_area_nm' column could contain information to filter out 'prepay' calls.",
+                "The 'call_end_dt' column contains the date when the call ended, which can be used to filter for the latest available information.",
             ],
-            "answer": "staff.first_name, staff.last_name, staff.staff_address_id",
-        },
-        {
-            "context": "\n  Table Name: Problems\n  This table has the following columns :\n     1. problem_id\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. product_id\n        This column is of type INTEGER and is Non nullable.\n     3. closure_authorised_by_staff_id\n        This column is of type INTEGER and is Non nullable.\n     4. reported_by_staff_id\n        This column is of type INTEGER and is Non nullable.\n     5. date_problem_reported\n        This column is of type DATETIME and is Non nullable.\n     6. date_problem_closed\n        This column is of type DATETIME and is nullable.\n     7. problem_description\n        This column is of type VARCHAR(255) and is nullable.\n     8. other_problem_details\n        This column is of type VARCHAR(255) and is nullable.\n",
-            "question": "What are the product ids for the problems reported by Christop Berge with closure authorised by Ashley Medhurst?",
-            "thoughts": [
-                "The table seems to describe information about reported problems for each product, and the question is asking about product IDs for the problems reported and closed by certain people.",
-                "The question mentions \"product ids\", and the table contains product id information in the \"product_id\" column.",
-                "The question mentions \"reported by\", and the table contains reporting person information in the \"reported_by_staff_id\" column.",
-                "The question mentions \"closure authorised by\", and the table contains closure authorization information in the \"closure_authorised_by_staff_id\" column.",
-            ],
-            "answer": "problems.closure_authorised_by_staff_id, problems.product_id, problems.reported_by_staff_id",
-        },
-        {
-            "context": "\n  Table Name: airport\n  This table has the following columns :\n     1. Airport_ID\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. Airport_Name\n        This column is of type TEXT and is nullable.\n     3. Total_Passengers\n        This column is of type REAL and is nullable.\n     4. %_Change_2007\n        This column is of type TEXT and is nullable.\n     5. International_Passengers\n        This column is of type REAL and is nullable.\n     6. Domestic_Passengers\n        This column is of type REAL and is nullable.\n     7. Transit_Passengers\n        This column is of type REAL and is nullable.\n     8. Aircraft_Movements\n        This column is of type REAL and is nullable.\n     9. Freight_Metric_Tonnes\n        This column is of type REAL and is nullable.\n",
-            "question": "Show all information on the airport that has the largest number of international passengers.",
-            "thoughts": [
-                "The table seems to describe various informations related to airport and passenger details for each airport, and the question is asking about information about the airport based on a criteria on international passengers",
-                "The question mentions \"all information on airport\", and the table contains airport information in the \"aircraft_movements\", \"domestic_passengers\", \"airport_name\", \"freight_metric_tonnes\", \"transit_passengers\", \"_change_2007\",  \"airport_id\" columns.",
-                "The question mentions criteria \"international passengers\" , and the table contains international passengers information in \"International_Passengers\" column",
-            ],
-            "answer": "airport.aircraft_movements, airport.domestic_passengers, airport.airport_name, airport.international_passengers, airport.freight_metric_tonnes, airport.transit_passengers, airport.%_change_2007, airport.total_passengers, airport.airport_id",
-        },
-        {
-            "context": "\n  Table Name: company\n  This table has the following columns :\n     1. Company_ID\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. Rank\n        This column is of type INTEGER and is nullable.\n     3. Company\n        This column is of type TEXT and is nullable.\n     4. Headquarters\n        This column is of type TEXT and is nullable.\n     5. Main_Industry\n        This column is of type TEXT and is nullable.\n     6. Sales_billion\n        This column is of type REAL and is nullable.\n     7. Profits_billion\n        This column is of type REAL and is nullable.\n     8. Assets_billion\n        This column is of type REAL and is nullable.\n     9. Market_Value\n        This column is of type REAL and is nullable.\n",
-            "question": "find the rank, company names, market values of the companies in the banking industry order by their sales and profits in billion.",
-            "thoughts": [
-                "The table seems to describe the details of each company and, the question is asking about details of the company in certain order and under certain filters.",
-                "The question mentions \"rank\", and the table contains rank information in the \"rank\" column.",
-                "The question mentions \"company names\", and the table contains company name information in the \"company\" column.",
-                "The question mentions \"market values\", and the table contains market value information in the \"market_value\" column.",
-                "The question mentions \"banking industry\", and the table contains banking industry information in the \"main_industry\" column.",
-                "The question mentions \"order by sales\", and the table contains sales information in the \"sales_billion\" column.",
-                "The question mentions \"profits in billion\", and the table contains profit information in the \"profits_billion\" column.",
-            ],
-            "answer": "company.profits_billion, company.market_value, company.sales_billion, company.rank, company.company, company.main_industry",
-        },
-        {
-            "context": "\n  Table Name: basketball_match\n  This table has the following columns :\n     1. Team_ID\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. School_ID\n        This column is of type INTEGER and is nullable.\n     3. Team_Name\n        This column is of type TEXT and is nullable.\n     4. ACC_Regular_Season\n        This column is of type TEXT and is nullable.\n     5. ACC_Percent\n        This column is of type TEXT and is nullable.\n     6. ACC_Home\n        This column is of type TEXT and is nullable.\n     7. ACC_Road\n        This column is of type TEXT and is nullable.\n     8. All_Games\n        This column is of type TEXT and is nullable.\n     9. All_Games_Percent\n        This column is of type INTEGER and is nullable.\n     10. All_Home\n        This column is of type TEXT and is nullable.\n     11. All_Road\n        This column is of type TEXT and is nullable.\n     12. All_Neutral\n        This column is of type TEXT and is nullable.\n",
-            "question": "What is the team name and acc regular season score of the school that was founded for the longest time?",
-            "thoughts": [
-                "The table seems to describe various basketball match details for each team and school, and the question is asking about team names and scores for schools filtered by certain criteria.",
-                "The question mentions \"team name\", and the table contains team name information in the \"team_name\" column.",
-                "The question mentions \"acc regular season score\", and the table contains acc regular season score information in the \"acc_regular_season\" column.",
-                "The question mentions \"school info\", and the table contains school info in the column \"school_id\".",
-                "The question mentions \"school that was founded for the longest time?\", but the table does not contain any information about founding date.",
-            ],
-            "answer": "basketball_match.acc_regular_season, basketball_match.school_id, basketball_match.team_name",
-        },
-        {
-            "context": "\n  Table Name: employees\n  This table has the following columns :\n     1. id\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. last_name\n        This column is of type VARCHAR(20) and is Non nullable.\n     3. first_name\n        This column is of type VARCHAR(20) and is Non nullable.\n     4. title\n        This column is of type VARCHAR(30) and is nullable.\n     5. reports_to\n        This column is of type INTEGER and is nullable.\n     6. birth_date\n        This column is of type TIMESTAMP and is nullable.\n     7. hire_date\n        This column is of type TIMESTAMP and is nullable.\n     8. address\n        This column is of type VARCHAR(70) and is nullable.\n     9. city\n        This column is of type VARCHAR(40) and is nullable.\n     10. state\n        This column is of type VARCHAR(40) and is nullable.\n     11. country\n        This column is of type VARCHAR(40) and is nullable.\n     12. postal_code\n        This column is of type VARCHAR(10) and is nullable.\n     13. phone\n        This column is of type VARCHAR(24) and is nullable.\n     14. fax\n        This column is of type VARCHAR(24) and is nullable.\n     15. email\n        This column is of type VARCHAR(60) and is nullable.\n",
-            "question": "How many customers does Steve Johnson support?",
-            "thoughts": [
-                "The table seems to describe employee details and company information for each employee, and the question is asking about customer count based on certain criteria.",
-                "The question mentions \"how many customers\", and the table contains ID information in the \"id\" column.",
-                "The question mentions \"Steve Johnson support\", and the table contains first name information in the \"first_name\" column.",
-                "The question mentions \"Steve Johnson support\", and the table contains last name information in the \"last_name\" column.",
-            ],
-            "answer": "employees.first_name, employees.id, employees.last_name",
-        },
-        {
-            "context": "\n  Table Name: Customer\n  This table has the following columns :\n     1. CustomerId\n        This column is of type INTEGER and is Non nullable.\n        This column is the primary key for this table\n     2. FirstName\n        This column is of type VARCHAR(40) and is Non nullable.\n     3. LastName\n        This column is of type VARCHAR(20) and is Non nullable.\n     4. Company\n        This column is of type VARCHAR(80) and is nullable.\n     5. Address\n        This column is of type VARCHAR(70) and is nullable.\n     6. City\n        This column is of type VARCHAR(40) and is nullable.\n     7. State\n        This column is of type VARCHAR(40) and is nullable.\n     8. Country\n        This column is of type VARCHAR(40) and is nullable.\n     9. PostalCode\n        This column is of type VARCHAR(10) and is nullable.\n     10. Phone\n        This column is of type VARCHAR(24) and is nullable.\n     11. Fax\n        This column is of type VARCHAR(24) and is nullable.\n     12. Email\n        This column is of type VARCHAR(60) and is Non nullable.\n     13. SupportRepId\n        This column is of type INTEGER and is nullable.\n",
-            "question": "Find all invoice dates corresponding to customers with first name Astrid and last name Gruber.",
-            "thoughts": [
-                "The table seems to describe various customer information including personal and company details for each customer, and the question is asking about invoice dates for customer having certain names.",
-                "The question mentions \"invoice date\", and the table does not contains information about invoice date.",
-                "The question mentions criteria for \"first name\", and the table contains first name information in the \"firstname\" column.",
-                "The question mentions criteria for \"last name\", and the table contains last name information in the \"lastname\" column.",
-                "The question mentions \"customer\" information, and the table contains customer information in the \"customerid\" column",
-            ],
-            "answer": "customer.firstname, customer.customerid, customer.lastname",
-        },
-        {
-            "context": "\n  Table Name: player\n  This table has the following columns :\n     1. player_id\n        This column is of type TEXT and is nullable.\n     2. birth_year\n        This column is of type NUMERIC and is nullable.\n     3. birth_month\n        This column is of type NUMERIC and is nullable.\n     4. birth_day\n        This column is of type NUMERIC and is nullable.\n     5. birth_country\n        This column is of type TEXT and is nullable.\n     6. birth_state\n        This column is of type TEXT and is nullable.\n     7. birth_city\n        This column is of type TEXT and is nullable.\n     8. death_year\n        This column is of type NUMERIC and is nullable.\n     9. death_month\n        This column is of type NUMERIC and is nullable.\n     10. death_day\n        This column is of type NUMERIC and is nullable.\n     11. death_country\n        This column is of type TEXT and is nullable.\n     12. death_state\n        This column is of type TEXT and is nullable.\n     13. death_city\n        This column is of type TEXT and is nullable.\n     14. name_first\n        This column is of type TEXT and is nullable.\n     15. name_last\n        This column is of type TEXT and is nullable.\n     16. name_given\n        This column is of type TEXT and is nullable.\n     17. weight\n        This column is of type NUMERIC and is nullable.\n     18. height\n        This column is of type NUMERIC and is nullable.\n     19. bats\n        This column is of type TEXT and is nullable.\n     20. throws\n        This column is of type TEXT and is nullable.\n     21. debut\n        This column is of type TEXT and is nullable.\n     22. final_game\n        This column is of type TEXT and is nullable.\n     23. retro_id\n        This column is of type TEXT and is nullable.\n     24. bbref_id\n        This column is of type TEXT and is nullable.\n",
-            "question": "List players' first name and last name who have weight greater than 220 or height shorter than 75.",
-            "thoughts": [
-                "The table seems to contain information about each player, including their personal details, physical attributes, and career information, and the question is asking the names of the players with certain height and weight constraints.",
-                "The question mentions \"player\u2019s first name\", and the table contains player\u2019s first name information in the \"name_first\" column.",
-                "The question mentions \"player\u2019s last name\", and the table contains player\u2019s last name information in the \"name_last\" column.",
-                "The question mentions \"weight\", and the table contains player\u2019s weight information in the \"weight\" column.",
-                "The question mentions \"height\", and the table contains player\u2019s height information in the \"height\" column.",
-            ],
-            "answer": "player.weight, player.name_first, player.name_last, player.height",
-        },
-        {
-            "context": "\n  Table Name: Catalog_Contents\n  This table has the following columns :\n     1. catalog_entry_id\n        This column is of type INTEGER and is nullable.\n        This column is the primary key for this table\n     2. catalog_level_number\n        This column is of type INTEGER and is Non nullable.\n     3. parent_entry_id\n        This column is of type INTEGER and is nullable.\n     4. previous_entry_id\n        This column is of type INTEGER and is nullable.\n     5. next_entry_id\n        This column is of type INTEGER and is nullable.\n     6. catalog_entry_name\n        This column is of type VARCHAR(80) and is nullable.\n     7. product_stock_number\n        This column is of type VARCHAR(50) and is nullable.\n     8. price_in_dollars\n        This column is of type DOUBLE and is nullable.\n     9. price_in_euros\n        This column is of type DOUBLE and is nullable.\n     10. price_in_pounds\n        This column is of type DOUBLE and is nullable.\n     11. capacity\n        This column is of type VARCHAR(20) and is nullable.\n     12. length\n        This column is of type VARCHAR(20) and is nullable.\n     13. height\n        This column is of type VARCHAR(20) and is nullable.\n     14. width\n        This column is of type VARCHAR(20) and is nullable.\n",
-            "question": "What are the entry names of catalog with the attribute possessed by most entries.",
-            "thoughts": [
-                "The table seems to describe various details of products for each catalog, and the question is asking about catalog entry names under specific conditions",
-                "The question mentions \"entry names\", and the table contains entry names information in the \"catalog_entry_name\" column.",
-                "The question mentions filtering by \"most entries\", and the table contains entry information in the \"catalog_entry_id\" column.",
-            ],
-            "answer": "catalog_contents.catalog_entry_id, catalog_contents.catalog_entry_name",
+            "answer": "icm_summary_fact_exp.abandons_cnt, icm_summary_fact_exp.eccr_dept_nm, icm_summary_fact_exp.acd_area_nm, icm_summary_fact_exp.call_end_dt",
         },
     ]
-
