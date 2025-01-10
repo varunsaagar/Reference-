@@ -1,8 +1,6 @@
-
-
-# data_access.py
 from google.cloud import bigquery
 from google.api_core import exceptions
+
 
 class BigQueryManager:
     def __init__(self, project_id, dataset_id, table_id):
@@ -29,7 +27,7 @@ class BigQueryManager:
                     }
                 )
             return schema_info
-        except exceptions.NotFound:
+            except exceptions.NotFound:
             print(f"Table {table_ref} not found")
             return None
         except exceptions.Forbidden:
@@ -51,6 +49,7 @@ class BigQueryManager:
         except Exception as e:
             print(f"Error executing query: {e}")
             return None
+
     def get_distinct_values(self, column_name, limit=10):
         """Retrieves a sample of distinct values from a specified column."""
         try:
@@ -66,3 +65,4 @@ class BigQueryManager:
         except Exception as e:
             print(f"Error getting distinct values for {column_name}: {e}")
             return None
+
