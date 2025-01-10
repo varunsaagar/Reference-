@@ -3,19 +3,19 @@ from google.api_core import exceptions
 
 
 class BigQueryManager:
-    def __init__(self, project_id, dataset_id, table_id):
-        # Hardcode project, dataset, and table IDs
+    def __init__(self, project_id, dataset_id):
+        # Only project and dataset in init
         self.project_id = project_id
         self.dataset_id = dataset_id
-        self.table_id = table_id
+        # self.table_id = table_id  # Remove table_id from here
 
         # Use default credentials
         self.client = bigquery.Client(project=self.project_id)
 
-    def get_table_schema(self):
+    def get_table_schema(self, table_id):  # Add table_id parameter
         """Retrieves the schema of the specified BigQuery table."""
         try:
-            table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+            table_ref = f"{self.project_id}.{self.dataset_id}.{table_id}"  # Use table_id here
             table = self.client.get_table(table_ref)
             schema_info = []
             for field in table.schema:
@@ -27,7 +27,7 @@ class BigQueryManager:
                     }
                 )
             return schema_info
-            except exceptions.NotFound:
+        except exceptions.NotFound:
             print(f"Table {table_ref} not found")
             return None
         except exceptions.Forbidden:
@@ -49,7 +49,6 @@ class BigQueryManager:
         except Exception as e:
             print(f"Error executing query: {e}")
             return None
-    # in data_access.py (BigQueryManager class)
 
     def get_table_descriptions(self):
         """
@@ -67,13 +66,13 @@ class BigQueryManager:
         except Exception as e:
             print(f"Error getting table descriptions: {e}")
             return {}
-
-    def get_distinct_values(self, column_name, limit=10):
+        
+    def get_distinct_values(self, column_name, table_id, limit=10):  # Add table_id parameter
         """Retrieves a sample of distinct values from a specified column."""
         try:
             query = f"""
                 SELECT DISTINCT {column_name}
-                FROM `{self.project_id}.{self.dataset_id}.{self.table_id}`
+                FROM `{self.project_id}.{self.dataset_id}.{table_id}`
                 WHERE {column_name} IS NOT NULL
                 LIMIT {limit}
             """
@@ -83,4 +82,3 @@ class BigQueryManager:
         except Exception as e:
             print(f"Error getting distinct values for {column_name}: {e}")
             return None
-
