@@ -433,7 +433,7 @@ class GeminiAgent:
         beginning and ending triple backticks if they are part of a code block.
         """
         # Updated regex to correctly capture SQL query within triple backticks
-        match = re.search(r"`sql\s*(.*?)\s*`", response_text, re.DOTALL)
+        match = re.search(r"```sql\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE)
         if match:
             sql_query = match.group(1).strip()
             print(f"Extracted SQL Query (before processing): {sql_query}")
@@ -758,3 +758,46 @@ class GeminiAgent:
             "answer": "icm_summary_fact_exp.abandons_cnt, icm_summary_fact_exp.eccr_dept_nm, icm_summary_fact_exp.acd_area_nm, icm_summary_fact_exp.call_end_dt",
         },
     ]
+
+ python3 main.py 
+Error decoding intent/entity extraction response: ```json
+{
+  "intent": "get_call_metrics",
+  "entities": {
+    "DATE_RANGE": ["yesterday"],
+    "METRIC": ["count of calls"],
+    "CALL_DISPOSITION": ["answered"],
+    "TOPIC": ["technical support"],
+    "TIME": ["500 seconds"]
+  }
+}
+```
+Selected columns: ['1. **call_duration_seconds:** To check if the call duration was more than 500 seconds.\n2. **answered_cnt:** To filter for calls that were answered.\n3. **eccr_dept_nm:** To filter calls related to technical support.\n4. **call_end_dt:** To filter for calls received yesterday.\n\nAnswer: icm_summary_fact_exp.call_duration_seconds', 'icm_summary_fact_exp.answered_cnt', 'icm_summary_fact_exp.eccr_dept_nm', 'icm_summary_fact_exp.call_end_dt']
+Iteration: 1
+Initial response: content {
+  role: "model"
+  parts {
+    text: "```sql\nSELECT\n    count(*)\n  FROM\n    `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp`\n  WHERE call_duration_seconds > 500\n   AND answered_cnt = 1\n   AND rep_type_cd = \'Technical support\'\n   AND call_end_dt = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.012199464898843031
+
+Extracted SQL Query (before processing): SELECT
+    count(*)
+  FROM
+    `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp`
+  WHERE call_duration_seconds > 500
+   AND answered_cnt = 1
+   AND rep_type_cd = 'Technical support'
+   AND call_end_dt = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+Extracted SQL Query (before processing): SELECT
+    count(*)
+  FROM
+    `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp`
+  WHERE call_duration_seconds > 500
+   AND answered_cnt = 1
+   AND rep_type_cd = 'Technical support'
+   AND call_end_dt = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+Query results: [{'f0_': 0}]
+Final Response: [{'f0_': 0}]
