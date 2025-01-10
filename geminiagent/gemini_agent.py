@@ -69,7 +69,7 @@ class GeminiAgent:
         ## Entities
 
         Entities are specific pieces of information within the user query that are relevant to the intent.
-        Extract entity values directly from the user query. Do not include column names.
+        Extract entity values directly from the user query. **Do not include column names.**
 
         Possible Entity Types:
         - DATE_RANGE
@@ -98,8 +98,13 @@ class GeminiAgent:
             - Keys are entity types (e.g., "DATE_RANGE", "METRIC"). Use the exact entity type names listed above.
             - Values are lists of strings containing the extracted entity values.
 
-        **Do not include any additional text or explanation outside of the JSON object.
-        Do not include backticks (```) or the word "json" in your response.
+        **Strictly follow the JSON format. Do not deviate.**
+        **Do not include any additional text or explanation outside of the JSON object.**
+        **Do not include backticks (```) or the word "json" in your response.**
+        **Do not put any newlines or spaces at the beginning or end of your response**
+        **Do not use escape characters like '\\n' in your response.**
+        **Do not hallucinate any entity value which is not present in user query**
+        **Under no circumstances should you break any of the above instructions.**
 
         ## Examples
 
@@ -108,45 +113,22 @@ class GeminiAgent:
         **Example 1:**
         User Query: 'What was the average call duration for technical support calls yesterday?'
         Output:
-        {{
-          "intent": "get_call_metrics",
-          "entities": {{
-            "DATE_RANGE": ["yesterday"],
-            "METRIC": ["call duration"],
-            "TOPIC": ["technical support"]
-          }}
-        }}
+        {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["yesterday"], "METRIC": ["call duration"], "TOPIC": ["technical support"]}}}}
 
         **Example 2:**
         User Query: 'How many calls were abandoned last week?'
         Output:
-        {{
-          "intent": "get_call_metrics",
-          "entities": {{
-            "DATE_RANGE": ["last week"],
-            "CALL_DISPOSITION": ["abandoned"]
-          }}
-        }}
+        {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["last week"], "CALL_DISPOSITION": ["abandoned"]}}}}
 
         **Example 3:**
         User Query: 'What is the handle time for calls from the billing department on 2023-03-15?'
         Output:
-        {{
-          "intent": "get_call_metrics",
-          "entities": {{
-            "DATE_RANGE": ["2023-03-15"],
-            "METRIC": ["handle time"],
-            "TOPIC": ["billing"]
-          }}
-        }}
+        {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["2023-03-15"], "METRIC": ["handle time"], "TOPIC": ["billing"]}}}}
 
         **Example 4 (No specific intent/entities):**
         User Query: 'List all columns of the table.'
         Output:
-        {{
-          "intent": "general_query",
-          "entities": {{}}
-        }}
+        {{"intent": "general_query", "entities": {{}}}}
 
         Now, analyze the user query provided at the beginning and provide the intent and entities in the specified JSON format.
         """
@@ -160,7 +142,7 @@ class GeminiAgent:
 
         except (json.JSONDecodeError, AttributeError):
             print(f"Error decoding intent/entity extraction response: {response.text}")
-            return "general_query", {}  
+            return "general_query", {} 
     
     def _map_entities_to_columns_agentic(self, extracted_entities: Dict[str, List[str]]) -> Dict[str, List[str]]:
         """
