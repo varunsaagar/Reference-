@@ -1,13 +1,11 @@
-
-
 import vertexai
 from vertexai.generative_models import (
     FunctionDeclaration,
     GenerativeModel,
     Part,
     Tool,
-    FunctionCall,  # Import FunctionCall
-    Content,  # Import Content
+    FunctionCall,
+    Content,
 )
 from data_access import BigQueryManager
 from typing import List, Dict, Tuple
@@ -116,7 +114,7 @@ class GeminiAgent:
 
         self.chat = self.model.start_chat()
         self.table_id = None # Initialize table_id to None
-        
+
     def _select_table(self, user_query: str) -> str:
         """
         Uses the Gemini model to select the most relevant table based on the user query.
@@ -249,6 +247,7 @@ class GeminiAgent:
         except (json.JSONDecodeError, AttributeError):
             print(f"Error decoding intent/entity extraction response: {response.text}")
             return "general_query", {} 
+
     
     def _map_entities_to_columns_agentic(self, extracted_entities: Dict[str, List[str]]) -> Dict[str, List[str]]:
         """
@@ -499,9 +498,7 @@ class GeminiAgent:
             print(f"Getting distinct values for column: {column_name} (limit: {limit})")
 
             try:
-                distinct_values = self.bq_manager.get_distinct_values(
-                    column_name, limit
-                )
+                distinct_values = self.bq_manager.get_distinct_values(column_name, self.table_id, limit)
                 function_response = Part.from_function_response(
                     name=function_name,
                     response={
@@ -510,6 +507,24 @@ class GeminiAgent:
                 )
             except Exception as e:
                 error_message = f"Error getting distinct values: {e}"
+                function_response = Part.from_function_response(
+                    name=function_name, response={"content": error_message}
+                )
+        elif function_name == "select_table":
+            # Handle the new function call to select table
+            arguments = dict(response.function_call.args)
+            table_name = arguments["table_name"]
+
+            try:
+                function_response = Part.from_function_response(
+                    name=function_name,
+                    response={
+                        "content": table_name
+                    }
+                )
+            
+            except Exception as e:
+                error_message = f"Error in selecting table: {e}"
                 function_response = Part.from_function_response(
                     name=function_name, response={"content": error_message}
                 )
@@ -524,7 +539,7 @@ class GeminiAgent:
         beginning and ending triple backticks if they are part of a code block.
         """
         # Updated regex to correctly capture SQL query within triple backticks
-        match = re.search(r"```sql\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE)
+        match = re.search(r"`sql\s*(.*?)\s*`", response_text, re.DOTALL | re.IGNORECASE)
         if match:
             sql_query = match.group(1).strip()
             print(f"Extracted SQL Query (before processing): {sql_query}")
@@ -533,10 +548,13 @@ class GeminiAgent:
             print(f"No SQL query found in response: {response_text}")
             return ""
 
+    
     def process_query(self, user_query: str, max_iterations: int = 3) -> str:
         """Processes the user query with iterative error correction."""
+
         # Select the table first
         self.table_id = self._select_table(user_query)
+        print(f"selected table id : {self.table_id}")
         if not self.table_id:
             return "Could not determine the appropriate table for the query."
 
@@ -544,7 +562,7 @@ class GeminiAgent:
         self.bq_manager.table_id = self.table_id
 
         # Retrieve and format the table schema for the selected table
-        self.table_schema = self.bq_manager.get_table_schema()
+        self.table_schema = self.bq_manager.get_table_schema(self.table_id)
         self.formatted_table_schema = self._format_table_schema_for_prompt()
 
         # Agentic intent and entity extraction
@@ -569,8 +587,8 @@ class GeminiAgent:
             # Send prompt to Gemini and handle function calls
             response = self.chat.send_message(sql_prompt_parts)
             print(f"Initial response: {response.candidates[0]}")
-            
-            while response.candidates[0].finish_reason == "TOOL":
+
+            while response.candidates[0.finish_reason == "TOOL":
                 print(f"Function called in loop : {response.candidates[0].finish_reason}")
                 function_response = self._handle_function_call(
                     response.candidates[0].content.parts[0]
@@ -640,7 +658,7 @@ class GeminiAgent:
                 return error_message
 
         return "Max iterations reached without a successful query."
-        
+    
     def _generate_business_summary(self, user_query: str, intent: str, entities: Dict, results: List[Dict]) -> str:
         """
         Generates a human-readable summary of the query results for a business audience.
