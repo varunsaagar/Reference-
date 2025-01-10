@@ -49,6 +49,24 @@ class BigQueryManager:
         except Exception as e:
             print(f"Error executing query: {e}")
             return None
+    # in data_access.py (BigQueryManager class)
+
+    def get_table_descriptions(self):
+        """
+        Retrieves a dictionary of table names and their descriptions for all tables in the dataset.
+        """
+        try:
+            tables = self.client.list_tables(self.dataset_id)
+            table_descriptions = {}
+            for table in tables:
+                full_table_ref = f"{self.project_id}.{self.dataset_id}.{table.table_id}"
+                table_obj = self.client.get_table(full_table_ref)
+                table_descriptions[table.table_id] = table_obj.description if table_obj.description else ""
+                # print(f"Table: {table.table_id}, Description: {table_obj.description}") #Uncomment for debugging
+            return table_descriptions
+        except Exception as e:
+            print(f"Error getting table descriptions: {e}")
+            return {}
 
     def get_distinct_values(self, column_name, limit=10):
         """Retrieves a sample of distinct values from a specified column."""
