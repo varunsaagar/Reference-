@@ -1,19 +1,4 @@
- python3 main.py 
-Selected columns: ['icm_summary_fact_exp.call_duration_seconds', 'icm_summary_fact_exp.answered_cnt', 'icm_summary_fact_exp.eccr_dept_nm', 'icm_summary_fact_exp.call_end_dt']
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT COUNT(*) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE call_duration_seconds > 500 AND answered_cnt = 1 AND eccr_dept_nm = \'Technical Support\' AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.001990156129319617
 
-Extracted SQL Query (before processing): SELECT COUNT(*) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE call_duration_seconds > 500 AND answered_cnt = 1 AND eccr_dept_nm = 'Technical Support' AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-Extracted SQL Query (before processing): SELECT COUNT(*) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE call_duration_seconds > 500 AND answered_cnt = 1 AND eccr_dept_nm = 'Technical Support' AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-Query results: [{'f0_': 0}]
-Final Response: [{'f0_': 0}]
 
 import vertexai
 from vertexai.generative_models import (
@@ -495,7 +480,11 @@ class GeminiAgent:
 
                     # If query execution is successful, construct the response
                     if query_results:
-                        return str(query_results)  # Return the results directly
+                        # Generate a business summary using the new function
+                        summary = self._generate_business_summary(
+                            user_query, intent, extracted_entities, query_results
+                        )
+                        return summary  # Return the summary
                     else:
                         error_message = (
                             "Query executed successfully but returned no results."
@@ -537,7 +526,67 @@ class GeminiAgent:
                 return error_message
 
         return "Max iterations reached without a successful query."
+    
+    def _generate_business_summary(self, user_query: str, intent: str, entities: Dict, results: List[Dict]) -> str:
+        """
+        Generates a human-readable summary of the query results for a business audience.
+        """
+        if not results:
+            return "No results found for your query."
 
+        summary = ""
+
+        if intent == "get_call_metrics":
+            # Example for summarizing call metrics
+            if "DATE_RANGE" in entities:
+                date_range = ", ".join(entities["DATE_RANGE"])
+                summary += f"For the date range {date_range}: "
+            else:
+                summary += "For the given data: "
+
+            if "METRIC" in entities:
+                metric = entities["METRIC"][0]  # Assuming one metric for simplicity
+
+                if metric == "call duration" and results and 'f0_' in results[0]:
+                    # Assuming average call duration is returned as 'f0_'
+                    avg_duration = results[0]['f0_']
+                    summary += f"The average call duration was {avg_duration:.2f} seconds. "
+                elif metric == "handle time" and results and 'f0_' in results[0]:
+                    # Assuming average handle time
+                    avg_handle_time = results[0]['f0_']
+                    summary += f"The average call handle time was {avg_handle_time:.2f} seconds. "
+                elif "count" in metric.lower() and results and 'f0_' in results[0]:
+                    # Assuming count is returned as 'f0_'
+                    count = results[0]['f0_']
+                    summary += f"The {metric} was {count}. "
+                else:
+                    summary += f"The requested metric '{metric}' was calculated. "
+
+            if "TOPIC" in entities:
+                topic = ", ".join(entities["TOPIC"])
+                summary += f"The calls were related to '{topic}'. "
+
+            if "CALL_DISPOSITION" in entities:
+                disposition = ", ".join(entities["CALL_DISPOSITION"])
+                summary += f"The call disposition was '{disposition}'. "
+                
+            if not summary:
+                summary = "A summary couldn't be generated based on the available information."
+        elif intent == "get_agent_performance":
+            # Add logic to summarize agent performance
+            summary = "Agent performance summary: ... "  # Customize this
+        elif intent == "get_customer_info":
+            # Add logic to summarize customer information
+            summary = "Customer information summary: ... "  # Customize this
+        elif intent == "general_query":
+            summary = "A general query was made. The results are as follows: ... " # Customize this
+        else:
+            summary = "Here are the results of your query: ... " # Add generic summary
+
+        # Add more detailed summarization logic as needed based on your specific use cases
+
+        return summary
+     
     # Define the function declarations
     get_table_schema_func = FunctionDeclaration(
         name="get_table_schema",
