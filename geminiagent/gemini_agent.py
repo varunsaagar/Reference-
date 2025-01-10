@@ -50,6 +50,11 @@ class GeminiAgent:
 
         User Query: '{user_query}'
 
+        ## Intent
+
+        The user's intent should be a single string representing the primary goal of the query. 
+        Choose one of the following possible intents:
+
         Possible Intents:
         - get_call_metrics
         - get_agent_performance
@@ -59,7 +64,14 @@ class GeminiAgent:
         - get_abandon_info
         - general_query
 
-        Possible Entities (extract values from the user query):
+        If no specific intent is found, use "general_query".
+
+        ## Entities
+
+        Entities are specific pieces of information within the user query that are relevant to the intent.
+        Extract entity values directly from the user query. Do not include column names.
+
+        Possible Entity Types:
         - DATE_RANGE
         - TIME
         - METRIC
@@ -77,15 +89,23 @@ class GeminiAgent:
         - SUPER_SKILL_GROUP
         - SUPER_CALL_TYPE
 
-        Provide the output in valid JSON format with two keys: "intent" and "entities".
-        "intent" should contain a single string representing the identified intent.
-        "entities" should be a dictionary where keys are entity types (e.g., "DATE_RANGE")
-        and values are lists of strings containing the extracted entity values.
+        ## Output Format
 
-        Do not provide any extra information apart from JSON response. Do not add `json at the starting of json response and ` at the end of the json response. 
-        If no specific intent or entity is found, use "general_query" for intent and an empty dictionary for entities.
+        Provide the output in **valid JSON format** with **exactly two keys**: "intent" and "entities".
 
-        Example:
+        - **"intent"**: A string representing the identified intent.
+        - **"entities"**: A dictionary where:
+            - Keys are entity types (e.g., "DATE_RANGE", "METRIC"). Use the exact entity type names listed above.
+            - Values are lists of strings containing the extracted entity values.
+
+        **Do not include any additional text or explanation outside of the JSON object.
+        Do not include backticks (```) or the word "json" in your response.
+
+        ## Examples
+
+        Here are a few examples to illustrate the expected output format:
+
+        **Example 1:**
         User Query: 'What was the average call duration for technical support calls yesterday?'
         Output:
         {{
@@ -96,26 +116,51 @@ class GeminiAgent:
             "TOPIC": ["technical support"]
           }}
         }}
+
+        **Example 2:**
+        User Query: 'How many calls were abandoned last week?'
+        Output:
+        {{
+          "intent": "get_call_metrics",
+          "entities": {{
+            "DATE_RANGE": ["last week"],
+            "CALL_DISPOSITION": ["abandoned"]
+          }}
+        }}
+
+        **Example 3:**
+        User Query: 'What is the handle time for calls from the billing department on 2023-03-15?'
+        Output:
+        {{
+          "intent": "get_call_metrics",
+          "entities": {{
+            "DATE_RANGE": ["2023-03-15"],
+            "METRIC": ["handle time"],
+            "TOPIC": ["billing"]
+          }}
+        }}
+
+        **Example 4 (No specific intent/entities):**
+        User Query: 'List all columns of the table.'
+        Output:
+        {{
+          "intent": "general_query",
+          "entities": {{}}
+        }}
+
+        Now, analyze the user query provided at the beginning and provide the intent and entities in the specified JSON format.
         """
 
         response = self.model.generate_content(prompt)
         try:
-            # Remove any leading/trailing whitespace and ```json from the response
-            response_text = response.text.strip()
-            if response_text.startswith("```json"):
-                response_text = response_text[7:]
-            if response_text.endswith("```"):
-                response_text = response_text[:-3]
-            
-            # Parse the cleaned response as JSON
-            response_json = json.loads(response_text)
+            response_json = json.loads(response.text)
             intent = response_json.get("intent", "general_query")
             entities = response_json.get("entities", {})
             return intent, entities
 
         except (json.JSONDecodeError, AttributeError):
             print(f"Error decoding intent/entity extraction response: {response.text}")
-            return "general_query", {}          
+            return "general_query", {}  
     
     def _map_entities_to_columns_agentic(self, extracted_entities: Dict[str, List[str]]) -> Dict[str, List[str]]:
         """
