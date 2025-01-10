@@ -1,49 +1,4 @@
 
-(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q v2]$ python3 main.py
-Error decoding intent/entity extraction response: ```json
-{
-  "intent": "get_call_metrics",
-  "entities": {
-    "DATE_RANGE": ["yesterday"],
-    "CALL_DISPOSITION": ["answered"],
-    "METRIC": ["count"],
-    "TOPIC": ["technical support"],
-    "TIME": ["500 seconds"]
-  }
-}
-
-```
-Selected columns before : ["1. **Call Duration:** `call_duration_seconds` (to check if duration > 500 seconds)\n2. **Answered Calls:** `answered_cnt` (to filter for answered calls)\n3. **Department:** `eccr_dept_nm` (to filter for technical support calls)\n4. **Date:** `call_end_dt` (to filter for yesterday's calls)\n\nAnswer: icm_summary_fact_exp.call_duration_seconds", 'icm_summary_fact_exp.answered_cnt', 'icm_summary_fact_exp.eccr_dept_nm', 'icm_summary_fact_exp.call_end_dt']
-Selected columns after : ["1. **Call Duration:** `call_duration_seconds` (to check if duration > 500 seconds)\n2. **Answered Calls:** `answered_cnt` (to filter for answered calls)\n3. **Department:** `eccr_dept_nm` (to filter for technical support calls)\n4. **Date:** `call_end_dt` (to filter for yesterday's calls)\n\nAnswer: icm_summary_fact_exp.call_duration_seconds", 'icm_summary_fact_exp.answered_cnt', 'icm_summary_fact_exp.eccr_dept_nm', 'icm_summary_fact_exp.call_end_dt']
-Selected columns: ["1. **Call Duration:** `call_duration_seconds` (to check if duration > 500 seconds)\n2. **Answered Calls:** `answered_cnt` (to filter for answered calls)\n3. **Department:** `eccr_dept_nm` (to filter for technical support calls)\n4. **Date:** `call_end_dt` (to filter for yesterday's calls)\n\nAnswer: icm_summary_fact_exp.call_duration_seconds", 'icm_summary_fact_exp.answered_cnt', 'icm_summary_fact_exp.eccr_dept_nm', 'icm_summary_fact_exp.call_end_dt']
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT\n    count(*)\n  FROM\n    `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp`\n  WHERE call_duration_seconds > 500\n   AND answered_cnt = 1\n   AND rep_type_cd = \'Technical support\'\n   AND call_end_dt = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0083282859279559217
-
-Extracted SQL Query (before processing): SELECT
-    count(*)
-  FROM
-    `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp`
-  WHERE call_duration_seconds > 500
-   AND answered_cnt = 1
-   AND rep_type_cd = 'Technical support'
-   AND call_end_dt = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-Extracted SQL Query (before processing): SELECT
-    count(*)
-  FROM
-    `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp`
-  WHERE call_duration_seconds > 500
-   AND answered_cnt = 1
-   AND rep_type_cd = 'Technical support'
-   AND call_end_dt = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-Query results: [{'f0_': 0}]
-Final Response: [{'f0_': 0}]
 
 import vertexai
 from vertexai.generative_models import (
@@ -122,11 +77,12 @@ class GeminiAgent:
         - SUPER_SKILL_GROUP
         - SUPER_CALL_TYPE
 
-        Provide the output in JSON format with two keys: "intent" and "entities".
+        Provide the output in valid JSON format with two keys: "intent" and "entities".
         "intent" should contain a single string representing the identified intent.
         "entities" should be a dictionary where keys are entity types (e.g., "DATE_RANGE")
         and values are lists of strings containing the extracted entity values.
 
+        Do not provide any extra information apart from JSON response. Do not add `json at the starting of json response and ` at the end of the json response. 
         If no specific intent or entity is found, use "general_query" for intent and an empty dictionary for entities.
 
         Example:
@@ -144,21 +100,23 @@ class GeminiAgent:
 
         response = self.model.generate_content(prompt)
         try:
-            # Remove any leading/trailing backticks or `json ` blocks from the response text
-            response_text = response.text.strip().strip("`").strip()
+            # Remove any leading/trailing whitespace and ```json from the response
+            response_text = response.text.strip()
             if response_text.startswith("```json"):
                 response_text = response_text[7:]
             if response_text.endswith("```"):
                 response_text = response_text[:-3]
-
+            
+            # Parse the cleaned response as JSON
             response_json = json.loads(response_text)
             intent = response_json.get("intent", "general_query")
             entities = response_json.get("entities", {})
             return intent, entities
+
         except (json.JSONDecodeError, AttributeError):
             print(f"Error decoding intent/entity extraction response: {response.text}")
             return "general_query", {}
-
+          
     def _select_relevant_columns(self, user_query: str) -> List[str]:
         """
         Uses the Gemini model to select relevant columns for answering the user query.
