@@ -539,7 +539,7 @@ class GeminiAgent:
         beginning and ending triple backticks if they are part of a code block.
         """
         # Updated regex to correctly capture SQL query within triple backticks
-        match = re.search(r"`sql\s*(.*?)\s*`", response_text, re.DOTALL | re.IGNORECASE)
+        match = re.search(r"```sql\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE)
         if match:
             sql_query = match.group(1).strip()
             print(f"Extracted SQL Query (before processing): {sql_query}")
@@ -588,7 +588,7 @@ class GeminiAgent:
             response = self.chat.send_message(sql_prompt_parts)
             print(f"Initial response: {response.candidates[0]}")
 
-            while response.candidates[0.finish_reason == "TOOL":
+            while response.candidates[0].finish_reason == "TOOL":
                 print(f"Function called in loop : {response.candidates[0].finish_reason}")
                 function_response = self._handle_function_call(
                     response.candidates[0].content.parts[0]
