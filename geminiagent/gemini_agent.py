@@ -213,7 +213,6 @@ class GeminiAgent:
             print(f"Error decoding entity-column mapping response: {response.text}")
             return {}
 
-    
     def _format_table_schema_for_prompt(self) -> str:
         """Formats the table schema into a string for the Gemini prompt."""
         if not self.table_schema:
@@ -428,7 +427,7 @@ class GeminiAgent:
             print(f"No SQL query found in response: {response_text}")
             return ""
 
-    def process_query(self, user_query: str, max_iterations: int = 5) -> str:
+    def process_query(self, user_query: str, max_iterations: int = 3) -> str:
         """Processes the user query with iterative error correction."""
         # intent = self._extract_intent(user_query)
         # extracted_entities = self._extract_entities(user_query)
@@ -744,5 +743,3 @@ class GeminiAgent:
             "answer": "icm_summary_fact_exp.abandons_cnt, icm_summary_fact_exp.eccr_dept_nm, icm_summary_fact_exp.acd_area_nm, icm_summary_fact_exp.call_end_dt",
         },
     ]
-
-  
