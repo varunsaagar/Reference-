@@ -160,8 +160,13 @@ class GeminiAgent:
 
         Extracted Entities:\n{json.dumps(extracted_entities, indent=2)}
 
-        Provide the output in JSON format where keys are entity types (e.g., "DATE_RANGE") and values are lists of corresponding column names from the table schema.
-        
+        Provide the output in **valid JSON format** where keys are entity types (e.g., "DATE_RANGE") and values are lists of corresponding column names from the table schema.
+        **Do not include any additional text or explanation outside of the JSON object.**
+        **Do not include backticks (```) or the word "json" in your response.
+        **Do not put any newlines or spaces at the beginning or end of your response.**
+        **Do not use escape characters like '\\n' in your response.**
+        **Under no circumstances should you break any of the above instructions.**
+
         Focus on semantic relevance:
           - "call duration" should map to "call_duration_seconds"
           - "handle time" should map to "handle_tm_seconds"
@@ -197,11 +202,7 @@ class GeminiAgent:
           "TOPIC": ["billing"]
         }}
         Output:
-        {{
-          "DATE_RANGE": ["call_end_dt"],
-          "METRIC": ["call_duration_seconds", "handle_tm_seconds"],
-          "TOPIC": ["eccr_dept_nm"]
-        }}
+        {{"DATE_RANGE": ["call_end_dt"], "METRIC": ["call_duration_seconds", "handle_tm_seconds"], "TOPIC": ["eccr_dept_nm"]}}
         """
 
         response = self.model.generate_content(entity_mapping_prompt)
@@ -212,6 +213,7 @@ class GeminiAgent:
             print(f"Error decoding entity-column mapping response: {response.text}")
             return {}
 
+    
     def _format_table_schema_for_prompt(self) -> str:
         """Formats the table schema into a string for the Gemini prompt."""
         if not self.table_schema:
@@ -330,7 +332,9 @@ class GeminiAgent:
         User Question: {user_query}
 
         Think step by step and select only the column names that are most relevant to answering the question.
-        Provide the output as a comma-separated list of column names.
+        Provide the output as a comma-separated list of column names **without any surrounding quotes or brackets.
+        Do not include any additional text or explanation outside of the comma-separated list of column names.
+        **Do not include backticks (```) or the words "Output:", "Answer:" in your response. Do not add any prefix or suffix.**
         """
         return prompt
         
@@ -741,43 +745,4 @@ class GeminiAgent:
         },
     ]
 
-  python3 main.py 
-Error decoding entity-column mapping response: ```json
-{
-  "CALL_DISPOSITION": [
-    "final_call_dispo",
-    "call_dispo_flag",
-    "abandons_cnt",
-    "answered_cnt"
-  ],
-  "TIME": [
-    "call_duration_seconds"
-  ],
-  "DATE_RANGE": [
-    "call_end_dt",
-    "call_answer_dt"
-  ],
-  "TOPIC": [
-    "acd_area_nm",
-    "script_nm",
-    "eccr_dept_nm",
-    "bus_rule",
-    "super_bus_rule"
-  ]
-}
-```
-Selected columns: ["1. **Call Duration:** `call_duration_seconds` (to check if duration > 500)\n2. **Answered Calls:** `answered_cnt` (to filter for answered calls)\n3. **Department:** `eccr_dept_nm` (to filter for technical support calls)\n4. **Date:** `call_end_dt` (to filter for yesterday's calls)\n\nAnswer: icm_summary_fact_exp.call_duration_seconds", 'icm_summary_fact_exp.answered_cnt', 'icm_summary_fact_exp.eccr_dept_nm', 'icm_summary_fact_exp.call_end_dt']
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    text: "```sql\nSELECT COUNT(*) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE call_duration_seconds > 500 AND answered_cnt = 1 AND rep_type_cd = \'Technical Support\' AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)\n\n```\n"
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0073798407790481406
-
-Extracted SQL Query (before processing): SELECT COUNT(*) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE call_duration_seconds > 500 AND answered_cnt = 1 AND rep_type_cd = 'Technical Support' AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-Extracted SQL Query (before processing): SELECT COUNT(*) FROM `vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp` WHERE call_duration_seconds > 500 AND answered_cnt = 1 AND rep_type_cd = 'Technical Support' AND DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-Query results: [{'f0_': 0}]
-Final Response: [{'f0_': 0}]
+  
