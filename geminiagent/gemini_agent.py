@@ -667,56 +667,25 @@ class GeminiAgent:
             return "No results found for your query."
 
         summary = ""
+        
+        # Try to understand the user's query using Gemini model
+        prompt = f"""
+        You are an expert in summarizing the output of sql queries.
+        User Query: {user_query}
+        Query results: {results}
+        
+        Provide a human-readable summary of the results of query that has been asked in user query, focusing on the key findings.
+        Keep the summary concise and relevant to a business audience,
+        Explain what the query was about and what the results show without going into technical details about the query itself.
+        Do not include any extra information apart from the summary.
+        """
 
-        if intent == "get_call_metrics":
-            # Example for summarizing call metrics
-            if "DATE_RANGE" in entities:
-                date_range = ", ".join(entities["DATE_RANGE"])
-                summary += f"For the date range {date_range}: "
-            else:
-                summary += "For the given data: "
+        response = self.model.generate_content(prompt)
+        summary = response.text.strip()
 
-            if "METRIC" in entities:
-                metric = entities["METRIC"][0]  # Assuming one metric for simplicity
-
-                if metric == "call duration" and results and 'f0_' in results[0]:
-                    # Assuming average call duration is returned as 'f0_'
-                    avg_duration = results[0]['f0_']
-                    summary += f"The average call duration was {avg_duration:.2f} seconds. "
-                elif metric == "handle time" and results and 'f0_' in results[0]:
-                    # Assuming average handle time
-                    avg_handle_time = results[0]['f0_']
-                    summary += f"The average call handle time was {avg_handle_time:.2f} seconds. "
-                elif "count" in metric.lower() and results and 'f0_' in results[0]:
-                    # Assuming count is returned as 'f0_'
-                    count = results[0]['f0_']
-                    summary += f"The {metric} was {count}. "
-                else:
-                    summary += f"The requested metric '{metric}' was calculated. "
-
-            if "TOPIC" in entities:
-                topic = ", ".join(entities["TOPIC"])
-                summary += f"The calls were related to '{topic}'. "
-
-            if "CALL_DISPOSITION" in entities:
-                disposition = ", ".join(entities["CALL_DISPOSITION"])
-                summary += f"The call disposition was '{disposition}'. "
-                
-            if not summary:
-                summary = "A summary couldn't be generated based on the available information."
-        elif intent == "get_agent_performance":
-            # Add logic to summarize agent performance
-            summary = "Agent performance summary: ... "  # Customize this
-        elif intent == "get_customer_info":
-            # Add logic to summarize customer information
-            summary = "Customer information summary: ... "  # Customize this
-        elif intent == "general_query":
-            summary = "A general query was made. The results are as follows: ... " # Customize this
-        else:
-            summary = "Here are the results of your query: ... " # Add generic summary
-
-        # Add more detailed summarization logic as needed based on your specific use cases
-
+        if not summary:
+            summary = "A summary couldn't be generated based on the available information."
+        
         return summary
      
     # Define the function declarations
