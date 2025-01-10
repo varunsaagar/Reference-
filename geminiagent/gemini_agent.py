@@ -16,27 +16,133 @@ import json
 
 
 class GeminiAgent:
-    def __init__(self, project_id, dataset_id, table_id, location="us-central1"):
+    def __init__(self, project_id, dataset_id, location="us-central1"):
         self.project_id = project_id
         self.dataset_id = dataset_id
-        self.table_id = table_id
+        # self.table_id = table_id  # Remove table_id from init
         self.location = location
         vertexai.init(project=project_id, location=location)
 
-        self.bq_manager = BigQueryManager(project_id, dataset_id, table_id)
+        self.bq_manager = BigQueryManager(project_id, dataset_id)  # Initialize without table_id
 
-        # Retrieve and format the table schema
-        self.table_schema = self.bq_manager.get_table_schema()
-        self.formatted_table_schema = self._format_table_schema_for_prompt()
+        # # Retrieve and format the table schema
+        # self.table_schema = self.bq_manager.get_table_schema()
+        # self.formatted_table_schema = self._format_table_schema_for_prompt()
 
-        # Initialize Gemini model
+        # Add new function declaration for selecting table
+        self.select_table_func = FunctionDeclaration(
+            name="select_table",
+            description="Select the most relevant table from the dataset based on the user query.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "table_name": {
+                        "type": "string",
+                        "description": "The name of the table selected by the agent.",
+                    },
+                },
+                "required": ["table_name"],
+            },
+        )
+
+        # Define the function declarations
+        self.get_table_schema_func = FunctionDeclaration(
+            name="get_table_schema",
+            description="Get the schema of the specified table.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "table_name": {
+                        "type": "string",
+                        "description": "The fully qualified name of the table in the format `project_id.dataset_id.table_id`",
+                    },
+                },
+                "required": ["table_name"],
+            },
+        )
+
+        self.execute_sql_query_func = FunctionDeclaration(
+            name="execute_sql_query",
+            description="Execute a SQL query against the BigQuery database and get the result as json list.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "sql_query": {
+                        "type": "string",
+                        "description": "The SQL query to execute.",
+                    }
+                },
+                "required": ["sql_query"],
+            },
+        )
+
+        # Add new function declaration for getting distinct values
+        self.get_distinct_values_func = FunctionDeclaration(
+            name="get_distinct_column_values",
+            description="Get a sample of distinct values from a specified column in the table.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "description": "The name of the column to get distinct values from.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "The maximum number of distinct values to return.",
+                        "default": 10,
+                    },
+                },
+                "required": ["column_name"],
+            },
+        )
+
+        # Create the tool that includes the function declarations
+        self.bq_tool = Tool(
+            function_declarations=[
+                self.get_table_schema_func,
+                self.execute_sql_query_func,
+                self.get_distinct_values_func,
+                self.select_table_func, # Add the new function declaration
+            ],
+        )
+
+        # Initialize the Gemini model
         self.model = GenerativeModel(
             "gemini-1.5-pro-002",
-            tools=[self.bq_tool],
+            tools=[self.bq_tool], # Add bq_tool to the model
             generation_config={"temperature": 0},
         )
 
         self.chat = self.model.start_chat()
+        self.table_id = None # Initialize table_id to None
+        
+    def _select_table(self, user_query: str) -> str:
+        """
+        Uses the Gemini model to select the most relevant table based on the user query.
+        """
+        table_descriptions = self.bq_manager.get_table_descriptions()
+        
+        prompt = f"""
+        You are a table selection agent. You are given a user query and a set of tables with their descriptions.
+        Your task is to determine which table is most likely to contain the information needed to answer the query.
+
+        User Query: '{user_query}'
+
+        Available Tables:
+        """
+        for table_name, description in table_descriptions.items():
+            prompt += f"- **{table_name}**: {description}\n"
+
+        prompt += """
+        Based on the user query and the table descriptions, please provide the name of the most relevant table.
+        Return only the table name and nothing else.
+        """
+
+        response = self.model.generate_content(prompt)
+        selected_table = response.text.strip()
+        print(f"Selected Table: {selected_table}")
+        return selected_table
 
     def _extract_intents_and_entities(self, user_query: str) -> Tuple[str, Dict[str, List[str]]]:
         """
@@ -429,9 +535,17 @@ class GeminiAgent:
 
     def process_query(self, user_query: str, max_iterations: int = 3) -> str:
         """Processes the user query with iterative error correction."""
-        # intent = self._extract_intent(user_query)
-        # extracted_entities = self._extract_entities(user_query)
-        # entity_mapping = self._map_entities_to_columns(extracted_entities)
+        # Select the table first
+        self.table_id = self._select_table(user_query)
+        if not self.table_id:
+            return "Could not determine the appropriate table for the query."
+
+        # Update BigQuery Manager with selected table
+        self.bq_manager.table_id = self.table_id
+
+        # Retrieve and format the table schema for the selected table
+        self.table_schema = self.bq_manager.get_table_schema()
+        self.formatted_table_schema = self._format_table_schema_for_prompt()
 
         # Agentic intent and entity extraction
         intent, extracted_entities = self._extract_intents_and_entities(user_query)
@@ -455,7 +569,7 @@ class GeminiAgent:
             # Send prompt to Gemini and handle function calls
             response = self.chat.send_message(sql_prompt_parts)
             print(f"Initial response: {response.candidates[0]}")
-
+            
             while response.candidates[0].finish_reason == "TOOL":
                 print(f"Function called in loop : {response.candidates[0].finish_reason}")
                 function_response = self._handle_function_call(
@@ -526,7 +640,7 @@ class GeminiAgent:
                 return error_message
 
         return "Max iterations reached without a successful query."
-    
+        
     def _generate_business_summary(self, user_query: str, intent: str, entities: Dict, results: List[Dict]) -> str:
         """
         Generates a human-readable summary of the query results for a business audience.
