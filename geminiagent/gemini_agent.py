@@ -144,25 +144,42 @@ class GeminiAgent:
     def _semantic_search_columns(self, user_query: str) -> List[str]:
         """
         Performs a semantic search using FAISS to find relevant columns and values.
+        Returns the most relevant columns based on both semantic similarity and distance scores.
         """
         query_embedding = get_embeddings([user_query])[0]  # Use the imported get_embeddings
         
         # Normalize the query embedding for cosine similarity
-        query_embedding = np.array([query_embedding], dtype=np.float32) # added this line to fix the error
+        query_embedding = np.array([query_embedding], dtype=np.float32)
         faiss.normalize_L2(query_embedding)
-
-        D, I = self.index.search(query_embedding, k=5)  # Search top 5
-
-        relevant_columns = set()
-        for idx in I[0]:
+    
+        # Search top 5 most similar embeddings
+        # D contains distances (smaller = more similar), I contains indices
+        D, I = self.index.search(query_embedding, k=5)  
+    
+        relevant_columns = []
+        for score, idx in zip(D[0], I[0]):  # D[0] and I[0] because we only have one query
             data = self.index_data[idx]
-            if data["type"] == "column":
-                relevant_columns.add(f"{data['table']}.{data['column']}")
-            elif data["type"] == "value":
-                relevant_columns.add(f"{data['table']}.{data['column']}")  # Add column for values
-
-        print(f"Relevant columns from semantic search: {list(relevant_columns)}")
-        return list(relevant_columns)
+            
+            # Convert distance to similarity score (1 - distance) since we're using cosine similarity
+            similarity = 1 - score  # Higher is better
+            
+            # Only consider results with similarity above threshold
+            if similarity > 0.5:  # You can adjust this threshold
+                if data["type"] == "column":
+                    column_name = f"{data['table']}.{data['column']}"
+                    if column_name not in relevant_columns:
+                        relevant_columns.append(column_name)
+                elif data["type"] == "value":
+                    column_name = f"{data['table']}.{data['column']}"
+                    if column_name not in relevant_columns:
+                        relevant_columns.append(column_name)
+                
+                # Debug information
+                print(f"Match: {data['type']} - {data.get('column', data.get('table', ''))} "
+                      f"(Similarity: {similarity:.3f})")
+    
+        print(f"Relevant columns from semantic search: {relevant_columns}")
+        return relevant_columns
 
         
     def _select_table(self, user_query: str) -> str:
