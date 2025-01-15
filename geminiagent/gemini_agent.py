@@ -11,6 +11,12 @@ from data_access import BigQueryManager
 from typing import List, Dict, Tuple
 import re
 import json
+import faiss
+import numpy as np
+from create_vector_db import get_embeddings
+
+
+
 
 
 class GeminiAgent:
