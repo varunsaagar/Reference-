@@ -621,91 +621,59 @@ class GeminiAgent:
     
     def process_query(self, user_query: str, max_iterations: int = 3) -> str:
         """Processes the user query with iterative error correction."""
-
+        
         # Select the table first
         self.table_id = self._select_table(user_query)
         print(f"selected table id : {self.table_id}")
         if not self.table_id:
             return "Could not determine the appropriate table for the query."
-
+    
         # Update BigQuery Manager with selected table
         self.bq_manager.table_id = self.table_id
-
+        
         # Retrieve and format the table schema for the selected table
         self.table_schema = self.bq_manager.get_table_schema(self.table_id)
         self.formatted_table_schema = self._format_table_schema_for_prompt()
-
+        
         # Agentic intent and entity extraction
         intent, extracted_entities = self._extract_intents_and_entities(user_query)
-
+        
         # Agentic entity-column mapping
         entity_mapping = self._map_entities_to_columns_agentic(extracted_entities)
-
+        
         # Agentic column selection using the dedicated function
         selected_columns = self._select_relevant_columns(user_query)
         print(f"Selected columns: {selected_columns}")
-
-        # Call semantic search to get relevant columns using function calling
-        
-        # Create a FunctionCall Part for semantic search
-        semantic_search_function_call = FunctionCall(
-            name="semantic_search_columns",
-            args={"user_query": user_query},
+    
+        # Create semantic search message using proper Content and Part structure
+        semantic_message = Content(
+            parts=[
+                Part.from_text("Find relevant columns for the query using semantic search."),
+                Part.from_function_response(
+                    name="semantic_search_columns",
+                    response={
+                        "content": user_query
+                    }
+                )
+            ],
+            role="user"
         )
         
-        semantic_search_part = Part.from_function_call(semantic_search_function_call) # Create a Part from FunctionCall
-
-        # Send the message with the function call
-        semantic_response = self.chat.send_message([
-            Part.from_text("Use semantic_search_columns to find the most relevant columns for answering the user query."),
-            semantic_search_part,
-        ])
-
-        # Handle the function call response
-        if semantic_response.candidates and semantic_response.candidates[0].content.parts:
-            function_call_part = semantic_response.candidates[0].content.parts[0]
-
-            if isinstance(function_call_part, FunctionCall):
-                function_response = self._handle_function_call(function_call_part)
+        # Send the semantic search message
+        semantic_response = self.chat.send_message(semantic_message)
+        
+        # Process the semantic search results
+        if semantic_response.candidates[0].content:
+            relevant_columns = self._semantic_search_columns(user_query)
+            print(f"Semantic search columns: {relevant_columns}")
             
-                if isinstance(function_response, Part):
-                    # Assuming function_response.response.content.parts[0].text contains a JSON string
-                    function_response_text = function_response.response.content.parts[0].text
-                    
-                    # Remove backticks if present
-                    if function_response_text.startswith("`") and function_response_text.endswith("`"):
-                        function_response_text = function_response_text[3:-3]
-                    
-                    # Remove 'json' if present
-                    if function_response_text.lower().startswith("json"):
-                        function_response_text = function_response_text[4:]
-
-                    # Attempt to parse the JSON string
-                    try:
-                        semantic_columns = json.loads(function_response_text)
-                        print(f"Semantic search columns: {semantic_columns}")
-
-                        # Combine selected columns with semantically relevant columns
-                        selected_columns.extend(semantic_columns)
-                        selected_columns = list(set(selected_columns))  # Remove duplicates
-                        print(f"Combined selected columns: {selected_columns}")
-
-                    except json.JSONDecodeError as e:
-                        print(f"Error decoding JSON from semantic search response: {e}")
-                        print(f"Response text: {function_response_text}")
-                        semantic_columns = []
-
-                else:
-                    print("Function response is not a Part object.")
-                    semantic_columns = []
-            else:
-                print("Function call part is not a FunctionCall object.")
-                semantic_columns = []
-        else:
-            print("No function call part found in response.")
-            semantic_columns = []
-
+            # Combine selected columns with semantically relevant columns
+            selected_columns.extend(relevant_columns)
+            selected_columns = list(set(selected_columns))  # Remove duplicates
+            print(f"Combined selected columns: {selected_columns}")
+        
         error_message = None
+    
 
         for iteration in range(max_iterations):
             print(f"Iteration: {iteration + 1}")
