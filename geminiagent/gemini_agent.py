@@ -146,6 +146,10 @@ class GeminiAgent:
         Performs a semantic search using FAISS to find relevant columns and values.
         """
         query_embedding = get_embeddings([user_query])[0]
+        
+        # Normalize the query embedding for cosine similarity
+        faiss.normalize_L2(np.array([query_embedding], dtype=np.float32))
+
         D, I = self.index.search(np.array([query_embedding], dtype=np.float32), k=5)  # Search top 5
 
         relevant_columns = set()
@@ -158,7 +162,7 @@ class GeminiAgent:
 
         print(f"Relevant columns from semantic search: {list(relevant_columns)}")
         return list(relevant_columns)
-
+        
     def _select_table(self, user_query: str) -> str:
         """
         Uses the Gemini model to select the most relevant table based on the user query.
