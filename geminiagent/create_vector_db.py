@@ -3,6 +3,9 @@ import numpy as np
 import json
 from google.cloud import bigquery
 from vertexai.language_models import TextEmbeddingModel
+from google.api_core.future.polling import DEFAULT_POLLING
+import time
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # --- Configuration ---
 PROJECT_ID = "your-project-id"  # Replace with your project ID
@@ -16,21 +19,45 @@ BATCH_SIZE = 250  # Maximum number of instances per batch (limit is 250)
 bq_client = bigquery.Client(project=PROJECT_ID)
 embedding_model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL_NAME)
 
+# Increase the default polling timeout to 3600 seconds (1 hour)
+DEFAULT_POLLING._timeout = 3600
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10)
+)
+def get_embeddings_with_retry(texts_batch):
+    """Generates embeddings for a batch of texts with retry logic."""
+    try:
+        response = embedding_model.get_embeddings(texts_batch)
+        return [embedding.values for embedding in response]
+    except Exception as e:
+        print(f"Error in embedding generation: {e}")
+        raise
+
 def get_embeddings(texts):
-    """Generates embeddings for a list of texts using the Vertex AI model."""
+    """Generates embeddings for a list of texts using the Vertex AI model with improved error handling."""
     embeddings = []
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i:i + BATCH_SIZE]
         # Filter out empty strings from the batch
         batch = [text for text in batch if text]
         if not batch:
-            continue # Skip if batch is empty after filtering
+            continue
+        
         try:
-            response = embedding_model.get_embeddings(batch)
-            embeddings.extend([embedding.values for embedding in response])
+            # Add delay between batches to prevent rate limiting
+            if i > 0:
+                time.sleep(1)
+            
+            batch_embeddings = get_embeddings_with_retry(batch)
+            embeddings.extend(batch_embeddings)
+            print(f"Successfully processed batch {i//BATCH_SIZE + 1}")
         except Exception as e:
-            print(f"Error generating embeddings: {e}")
-            # Handle the error, e.g., retry, skip the batch, or raise the exception
+            print(f"Failed to process batch starting at index {i}: {e}")
+            # Continue with next batch instead of failing completely
+            continue
+    
     return embeddings
 
 def create_faiss_index(embeddings):
