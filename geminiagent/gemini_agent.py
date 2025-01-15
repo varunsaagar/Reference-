@@ -1,3 +1,56 @@
+(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q v3vd]$ python3 main.py 
+Selected Table: icm_summary_fact_exp
+selected table id : icm_summary_fact_exp
+Selected columns: ['abandons_cnt', 'eccr_dept_nm', 'acd_area_nm', 'call_end_dt', 'time_to_aband_seconds']
+Successfully processed batch 1
+Relevant columns from semantic search: []
+Semantic search columns: []
+Combined selected columns: ['acd_area_nm', 'abandons_cnt', 'eccr_dept_nm', 'call_end_dt', 'time_to_aband_seconds']
+Iteration: 1
+Initial response: content {
+  role: "model"
+  parts {
+    function_call {
+      name: "execute_sql_query"
+      args {
+        fields {
+          key: "sql_query"
+          value {
+            string_value: "SELECT eccr_dept_nm, COUNT(CASE WHEN abandons_cnt = 1 THEN 1 END) AS num_abandoned_calls, AVG(time_to_aband_seconds) AS avg_time_to_abandon, MIN(time_to_aband_seconds) AS min_time_to_abandon, MAX(time_to_aband_seconds) AS max_time_to_abandon FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp WHERE acd_area_nm <> \'Prepay\' AND call_end_dt = (SELECT MAX(call_end_dt) FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp) GROUP BY eccr_dept_nm"
+          }
+        }
+      }
+    }
+  }
+}
+finish_reason: STOP
+avg_logprobs: -0.0085948279484566
+
+Traceback (most recent call last):
+  File "/mnt/geminiagent/v3vd/main.py", line 50, in <module>
+    main()
+  File "/mnt/geminiagent/v3vd/main.py", line 44, in main
+    final_response = agent.process_query(formatted_query)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/geminiagent/v3vd/gemini_agent.py", line 719, in process_query
+    if response.candidates[0].content.parts[0].text:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 2576, in text
+    raise AttributeError(
+AttributeError: Response candidate content part has no text.
+Part:
+{
+  "function_call": {
+    "name": "execute_sql_query",
+    "args": {
+      "sql_query": "SELECT eccr_dept_nm, COUNT(CASE WHEN abandons_cnt = 1 THEN 1 END) AS num_abandoned_calls, AVG(time_to_aband_seconds) AS avg_time_to_abandon, MIN(time_to_aband_seconds) AS min_time_to_abandon, MAX(time_to_aband_seconds) AS max_time_to_abandon FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp WHERE acd_area_nm <> 'Prepay' AND call_end_dt = (SELECT MAX(call_end_dt) FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp) GROUP BY eccr_dept_nm"
+    }
+  }
+}
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1736931311.537611  537630 init.cc:229] grpc_wait_for_shutdown_with_timeout() timed out.
+
+
 import vertexai
 from vertexai.generative_models import (
     FunctionDeclaration,
