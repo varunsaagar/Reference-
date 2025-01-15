@@ -648,20 +648,27 @@ class GeminiAgent:
         # Call semantic search to get relevant columns using function calling
         semantic_response = self.chat.send_message([
             Part.from_text("Use semantic_search_columns to find the most relevant columns for answering the user query."),
-            Part.from_function_call(
-                FunctionCall(
-                    name="semantic_search_columns",
-                    args={"user_query": user_query},
-                )
-            ),
+            FunctionCall(
+                name="semantic_search_columns",
+                args={"user_query": user_query},
+            )
         ])
 
-        function_response = self._handle_function_call(
-            semantic_response.candidates[0].content.parts[0]
-        )
-        semantic_reponse_text = function_response.response.content.parts[0].text.replace("```","").replace("json","")
-        #print(semantic_reponse_text)
-        semantic_columns = eval(semantic_reponse_text)
+        # Handle the function call
+        function_response = self._handle_function_call(semantic_response.candidates[0].content.parts[0])
+
+        # Check if the response is a Part object and extract the content
+        if isinstance(function_response, Part):
+            semantic_response_text = function_response.response.content.parts[0].text.replace("```", "").replace("json", "")
+            try:
+                semantic_columns = eval(semantic_response_text)
+            except Exception as e:
+                print(f"Error evaluating semantic search response: {e}")
+                semantic_columns = []
+        else:
+            print("Unexpected response from function call.")
+            semantic_columns = []
+
         print(f"Semantic search columns: {semantic_columns}")
 
         # Combine selected columns with semantically relevant columns
