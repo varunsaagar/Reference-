@@ -1,55 +1,3 @@
-(text2sql) [domino@run-677775f203ca6841bc367eca-68v5q v3vd]$ python3 main.py 
-Selected Table: icm_summary_fact_exp
-selected table id : icm_summary_fact_exp
-Selected columns: ['abandons_cnt', 'eccr_dept_nm', 'acd_area_nm', 'call_end_dt', 'time_to_aband_seconds']
-Successfully processed batch 1
-Relevant columns from semantic search: []
-Semantic search columns: []
-Combined selected columns: ['acd_area_nm', 'abandons_cnt', 'eccr_dept_nm', 'call_end_dt', 'time_to_aband_seconds']
-Iteration: 1
-Initial response: content {
-  role: "model"
-  parts {
-    function_call {
-      name: "execute_sql_query"
-      args {
-        fields {
-          key: "sql_query"
-          value {
-            string_value: "SELECT eccr_dept_nm, COUNT(CASE WHEN abandons_cnt = 1 THEN 1 END) AS num_abandoned_calls, AVG(time_to_aband_seconds) AS avg_time_to_abandon, MIN(time_to_aband_seconds) AS min_time_to_abandon, MAX(time_to_aband_seconds) AS max_time_to_abandon FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp WHERE acd_area_nm <> \'Prepay\' AND call_end_dt = (SELECT MAX(call_end_dt) FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp) GROUP BY eccr_dept_nm"
-          }
-        }
-      }
-    }
-  }
-}
-finish_reason: STOP
-avg_logprobs: -0.0085948279484566
-
-Traceback (most recent call last):
-  File "/mnt/geminiagent/v3vd/main.py", line 50, in <module>
-    main()
-  File "/mnt/geminiagent/v3vd/main.py", line 44, in main
-    final_response = agent.process_query(formatted_query)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/geminiagent/v3vd/gemini_agent.py", line 719, in process_query
-    if response.candidates[0].content.parts[0].text:
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/text2sql/lib64/python3.11/site-packages/vertexai/generative_models/_generative_models.py", line 2576, in text
-    raise AttributeError(
-AttributeError: Response candidate content part has no text.
-Part:
-{
-  "function_call": {
-    "name": "execute_sql_query",
-    "args": {
-      "sql_query": "SELECT eccr_dept_nm, COUNT(CASE WHEN abandons_cnt = 1 THEN 1 END) AS num_abandoned_calls, AVG(time_to_aband_seconds) AS avg_time_to_abandon, MIN(time_to_aband_seconds) AS min_time_to_abandon, MAX(time_to_aband_seconds) AS max_time_to_abandon FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp WHERE acd_area_nm <> 'Prepay' AND call_end_dt = (SELECT MAX(call_end_dt) FROM vz-it-np-ienv-test-vegsdo-0.vegas_monitoring.icm_summary_fact_exp) GROUP BY eccr_dept_nm"
-    }
-  }
-}
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-E0000 00:00:1736931311.537611  537630 init.cc:229] grpc_wait_for_shutdown_with_timeout() timed out.
-
 
 import vertexai
 from vertexai.generative_models import (
@@ -201,44 +149,73 @@ class GeminiAgent:
         self.table_id = None # Initialize table_id to None
 
     def _semantic_search_columns(self, user_query: str) -> List[str]:
-        """
-        Performs a semantic search using FAISS to find relevant columns and values.
-        Returns the most relevant columns based on both semantic similarity and distance scores.
-        """
-        query_embedding = get_embeddings([user_query])[0]  # Use the imported get_embeddings
+    """
+    Performs a semantic search using FAISS to find relevant columns and values.
+    Returns the most relevant columns based on both semantic similarity and distance scores.
+    """
+    try:
+        # Get embeddings for the query
+        query_embedding = get_embeddings([user_query])[0]
         
         # Normalize the query embedding for cosine similarity
-        query_embedding = np.array([query_embedding], dtype=np.float32)
+        query_embedding = np.array([query_embedding], dtype=np.float32).reshape(1, -1)  # Reshape to 2D array
         faiss.normalize_L2(query_embedding)
-    
-        # Search top 5 most similar embeddings
-        # D contains distances (smaller = more similar), I contains indices
-        D, I = self.index.search(query_embedding, k=5)  
-    
-        relevant_columns = []
-        for score, idx in zip(D[0], I[0]):  # D[0] and I[0] because we only have one query
+
+        # Search top 10 most similar embeddings (increased from 5)
+        D, I = self.index.search(query_embedding, k=10)
+
+        # Dictionary to store column scores
+        column_scores = {}
+        
+        # Process results
+        for score, idx in zip(D[0], I[0]):
+            # Skip if index is invalid
+            if idx >= len(self.index_data):
+                continue
+                
             data = self.index_data[idx]
             
-            # Convert distance to similarity score (1 - distance) since we're using cosine similarity
-            similarity = 1 - score  # Higher is better
+            # Convert distance to similarity score
+            # Since we're using cosine similarity, the scores are between -1 and 1
+            # Convert to 0-1 range where 1 is most similar
+            similarity = (1 + score) / 2  # Convert from [-1,1] to [0,1] range
             
-            # Only consider results with similarity above threshold
-            if similarity > 0.5:  # You can adjust this threshold
-                if data["type"] == "column":
-                    column_name = f"{data['table']}.{data['column']}"
-                    if column_name not in relevant_columns:
-                        relevant_columns.append(column_name)
-                elif data["type"] == "value":
-                    column_name = f"{data['table']}.{data['column']}"
-                    if column_name not in relevant_columns:
-                        relevant_columns.append(column_name)
+            # Debug logging
+            print(f"Found match: Type={data['type']}, "
+                  f"Score={similarity:.4f}, "
+                  f"Data={data}")
+
+            # Process different types of matches
+            if data["type"] in ["column", "value", "column_description"]:
+                column_name = f"{data['table']}.{data['column']}"
                 
-                # Debug information
-                print(f"Match: {data['type']} - {data.get('column', data.get('table', ''))} "
-                      f"(Similarity: {similarity:.3f})")
-    
-        print(f"Relevant columns from semantic search: {relevant_columns}")
+                # Update score, keeping the highest score for each column
+                if column_name not in column_scores or similarity > column_scores[column_name]:
+                    column_scores[column_name] = similarity
+
+        # Filter columns by similarity threshold (adjusted threshold)
+        threshold = 0.3  # Lower threshold to catch more potential matches
+        relevant_columns = [
+            col for col, score in column_scores.items()
+            if score > threshold
+        ]
+        
+        # Sort by similarity score
+        relevant_columns.sort(key=lambda x: column_scores[x], reverse=True)
+        
+        # Debug output
+        print("\nColumn Scores:")
+        for col in relevant_columns:
+            print(f"{col}: {column_scores[col]:.4f}")
+        
+        print(f"\nFinal relevant columns: {relevant_columns}")
         return relevant_columns
+
+    except Exception as e:
+        print(f"Error in semantic search: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
 
         
     def _select_table(self, user_query: str) -> str:
