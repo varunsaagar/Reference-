@@ -21,9 +21,11 @@ def get_embeddings(texts):
     return [embedding.values for embedding in embeddings]
 
 def create_faiss_index(embeddings):
-    """Creates a FAISS index from a list of embeddings."""
+    """Creates a FAISS index from a list of embeddings using cosine similarity."""
     dimension = len(embeddings[0])
-    index = faiss.IndexFlatL2(dimension)  # Using L2 distance for similarity
+    index = faiss.IndexFlatIP(dimension)  # Using Inner Product for cosine similarity
+    # Normalize embeddings for cosine similarity
+    faiss.normalize_L2(np.array(embeddings, dtype=np.float32))
     index.add(np.array(embeddings, dtype=np.float32))
     return index
 
