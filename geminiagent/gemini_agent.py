@@ -572,10 +572,30 @@ class GeminiAgent:
                 function_response = Part.from_function_response(
                     name=function_name, response={"content": error_message}
                 )
+        elif function_name == "semantic_search_columns":
+            # Handle the semantic search function call
+            arguments = dict(response.function_call.args)
+            user_query = arguments["user_query"]
+            print(f"Performing semantic search for query: {user_query}")
+
+            try:
+                relevant_columns = self._semantic_search_columns(user_query)
+                function_response = Part.from_function_response(
+                    name=function_name,
+                    response={
+                        "content": str(relevant_columns),  # Return as a string representation of the list
+                    },
+                )
+            except Exception as e:
+                error_message = f"Error during semantic search: {e}"
+                function_response = Part.from_function_response(
+                    name=function_name, response={"content": error_message}
+                )
         else:
             raise ValueError(f"Unknown function: {function_name}")
 
         return function_response
+
 
     def _extract_sql_query(self, response_text: str) -> str:
         """
