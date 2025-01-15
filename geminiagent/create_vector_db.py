@@ -21,6 +21,10 @@ def get_embeddings(texts):
     embeddings = []
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i:i + BATCH_SIZE]
+        # Filter out empty strings from the batch
+        batch = [text for text in batch if text]
+        if not batch:
+            continue # Skip if batch is empty after filtering
         try:
             response = embedding_model.get_embeddings(batch)
             embeddings.extend([embedding.values for embedding in response])
@@ -34,8 +38,8 @@ def create_faiss_index(embeddings):
     dimension = len(embeddings[0])
     index = faiss.IndexFlatIP(dimension)  # Using Inner Product for cosine similarity
     # Normalize embeddings for cosine similarity
-    embeddings_array = np.array(embeddings, dtype=np.float32)
-    faiss.normalize_L2(embeddings_array)
+    embeddings_array = np.array(embeddings, dtype=np.float32) # added this line to fix the error
+    faiss.normalize_L2(embeddings_array) # add the embeddings array here
     index.add(embeddings_array)
     return index
 
@@ -54,7 +58,7 @@ def main():
 
         table_info = {
             "table_name": table.table_id,
-            "table_description": table.description or "",
+            "table_description": table.description or "No description available",
             "columns": [],
         }
 
@@ -62,7 +66,7 @@ def main():
             column_info = {
                 "column_name": field.name,
                 "column_type": field.field_type,
-                "column_description": field.description or "",
+                "column_description": field.description or "No description available",
                 "distinct_values": [],
             }
 
