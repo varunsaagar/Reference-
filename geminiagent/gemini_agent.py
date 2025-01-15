@@ -96,12 +96,38 @@ class GeminiAgent:
         )
 
         # Create the tool that includes the function declarations
+        self.index = faiss.read_index("call_center_embeddings.faiss")
+        with open("index_data.json", "r") as f:
+            self.index_data = json.load(f)
+        
+        # Add new function declaration for semantic search
+        self.semantic_search_func = FunctionDeclaration(
+            name="semantic_search_columns",
+            description="""
+                Performs a semantic search against the database schema and distinct values 
+                to find the most relevant columns for answering the user query.
+                This is powered by a vector database for semantic understanding.
+                """,
+            parameters={
+                "type": "object",
+                "properties": {
+                    "user_query": {
+                        "type": "string",
+                        "description": "The user's natural language query.",
+                    },
+                },
+                "required": ["user_query"],
+            },
+        )
+        
+        # Add semantic_search_func to bq_tool
         self.bq_tool = Tool(
             function_declarations=[
                 self.get_table_schema_func,
                 self.execute_sql_query_func,
                 self.get_distinct_values_func,
-                self.select_table_func, # Add the new function declaration
+                self.select_table_func,
+                self.semantic_search_func,  # Add the semantic search function
             ],
         )
 
@@ -114,6 +140,24 @@ class GeminiAgent:
 
         self.chat = self.model.start_chat()
         self.table_id = None # Initialize table_id to None
+
+    def _semantic_search_columns(self, user_query: str) -> List[str]:
+        """
+        Performs a semantic search using FAISS to find relevant columns and values.
+        """
+        query_embedding = get_embeddings([user_query])[0]
+        D, I = self.index.search(np.array([query_embedding], dtype=np.float32), k=5)  # Search top 5
+
+        relevant_columns = set()
+        for idx in I[0]:
+            data = self.index_data[idx]
+            if data["type"] == "column":
+                relevant_columns.add(f"{data['table']}.{data['column']}")
+            elif data["type"] == "value":
+                relevant_columns.add(f"{data['table']}.{data['column']}")  # Add column for values
+
+        print(f"Relevant columns from semantic search: {list(relevant_columns)}")
+        return list(relevant_columns)
 
     def _select_table(self, user_query: str) -> str:
         """
@@ -574,6 +618,29 @@ class GeminiAgent:
         # Agentic column selection using the dedicated function
         selected_columns = self._select_relevant_columns(user_query)
         print(f"Selected columns: {selected_columns}")
+
+        semantic_response = self.chat.send_message([
+            Part.from_text("Use semantic_search_columns to find the most relevant columns for answering the user query."),
+            Part.from_function_call(
+                FunctionCall(
+                    name="semantic_search_columns",
+                    args={"user_query": user_query},
+                )
+            ),
+        ])
+
+        function_response = self._handle_function_call(
+            semantic_response.candidates[0].content.parts[0]
+        )
+        semantic_reponse_text = function_response.response.content.parts[0].text.replace("```","").replace("json","")
+        #print(semantic_reponse_text)
+        semantic_columns = eval(semantic_reponse_text)
+        print(f"Semantic search columns: {semantic_columns}")
+
+        # Combine selected columns with semantically relevant columns
+        selected_columns.extend(semantic_columns)
+        selected_columns = list(set(selected_columns))  # Remove duplicates
+        print(f"Combined selected columns: {selected_columns}")
 
         error_message = None
 
