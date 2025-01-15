@@ -4,14 +4,14 @@ from gemini_agent import GeminiAgent
 from utils import format_user_query
 
 # Hardcoded BigQuery details
-PROJECT_ID = "vz-it-pr-gk1v-cwlsdo-0"  # Replace with your actual project ID
-DATASET_ID = "vzw_uda_prd_tbls_rd_v"  # Replace with your actual dataset ID
-TABLE_ID = "icm_summary_fact_exp"  # Replace with your actual table ID
+PROJECT_ID = "vz-it-np-ienv-test-vegsdo-0"  # Replace with your actual project ID
+DATASET_ID = "vegas_monitoring"  # Replace with your actual dataset ID
+# TABLE_ID = "icm_summary_fact_exp"  # Replace with your actual table ID
 LOCATION = "us-central1"  # Or your preferred location
 
 
 def main():
-    agent = GeminiAgent(PROJECT_ID, DATASET_ID, TABLE_ID, LOCATION)
+    agent = GeminiAgent(PROJECT_ID, DATASET_ID, LOCATION)
 
     # Hardcoded user query
     # user_query = "What was the average call duration for technical support calls yesterday?"
@@ -34,9 +34,9 @@ def main():
 
     # user_query = "what is count of calls where call duration was more than 500 seconds and calls were abandoned"
 
-    # user_query = "what is maximum , minimum and average call duration for technical support calls"
+    user_query = "Find the number of abandoned calls based on department for the latest available information but exclude prepay calls. I also need to know average, min and max time before the call is abandoned"
 
-    user_query = "what is count of calls where call duration was more than 500 seconds and calls were answered and calls were received for technical support yesterday"
+    #user_query = "what is count of calls where call duration was more than 500 seconds and calls were answered and calls were received for technical support yesterday"
     
 
     formatted_query = format_user_query(user_query)
