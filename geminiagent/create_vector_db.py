@@ -10,6 +10,7 @@ DATASET_ID = "your-dataset-id"  # Replace with your dataset ID
 LOCATION = "us-central1"
 EMBEDDING_MODEL_NAME = "textembedding-gecko@002"  # Vertex AI embedding model
 INDEX_FILE = "call_center_embeddings.faiss"  # File to store the FAISS index
+BATCH_SIZE = 250  # Maximum number of instances per batch (limit is 250)
 
 # --- Initialize Clients ---
 bq_client = bigquery.Client(project=PROJECT_ID)
@@ -17,17 +18,25 @@ embedding_model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL_NAME)
 
 def get_embeddings(texts):
     """Generates embeddings for a list of texts using the Vertex AI model."""
-    embeddings = embedding_model.get_embeddings(texts)
-    return [embedding.values for embedding in embeddings]
+    embeddings = []
+    for i in range(0, len(texts), BATCH_SIZE):
+        batch = texts[i:i + BATCH_SIZE]
+        try:
+            response = embedding_model.get_embeddings(batch)
+            embeddings.extend([embedding.values for embedding in response])
+        except Exception as e:
+            print(f"Error generating embeddings: {e}")
+            # Handle the error, e.g., retry, skip the batch, or raise the exception
+    return embeddings
 
 def create_faiss_index(embeddings):
     """Creates a FAISS index from a list of embeddings using cosine similarity."""
     dimension = len(embeddings[0])
     index = faiss.IndexFlatIP(dimension)  # Using Inner Product for cosine similarity
     # Normalize embeddings for cosine similarity
-    embeddings_array = np.array(embeddings, dtype=np.float32) # Converted into Array
-    faiss.normalize_L2(embeddings_array) # Pass embeddings array to function
-    index.add(embeddings_array) # Add embeddings array to index
+    embeddings_array = np.array(embeddings, dtype=np.float32)
+    faiss.normalize_L2(embeddings_array)
+    index.add(embeddings_array)
     return index
 
 def main():
