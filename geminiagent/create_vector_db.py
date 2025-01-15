@@ -25,8 +25,9 @@ def create_faiss_index(embeddings):
     dimension = len(embeddings[0])
     index = faiss.IndexFlatIP(dimension)  # Using Inner Product for cosine similarity
     # Normalize embeddings for cosine similarity
-    faiss.normalize_L2(np.array(embeddings, dtype=np.float32))
-    index.add(np.array(embeddings, dtype=np.float32))
+    embeddings_array = np.array(embeddings, dtype=np.float32) # Converted into Array
+    faiss.normalize_L2(embeddings_array) # Pass embeddings array to function
+    index.add(embeddings_array) # Add embeddings array to index
     return index
 
 def main():
