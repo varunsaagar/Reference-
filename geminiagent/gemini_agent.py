@@ -1,3 +1,34 @@
+import requests
+import json
+
+url = "https://vegas-llm-test.ebiz.verizon.com/vegas/apps/prompt/v2/relay/use_case/text2sql/context/zero_shot_context"
+
+payload = json.dumps({
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "hi"
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "system_instruction": {
+    "parts": [
+      {
+        "text": "You are the CFO. Using the critique agent's feedback, enhance the initial QBR report and generate the final version."
+      }
+    ]
+  }
+})
+headers = {
+  'Content-Type': 'application/json'
+}
+
+response = requests.request("POST", url, headers=headers, data=payload)
+
+print(response.text)
 
 import vertexai
 from vertexai.generative_models import (
