@@ -1,470 +1,307 @@
 import requests
 import json
-
-url = "https://vegas-llm-test.ebiz.verizon.com/vegas/apps/prompt/v2/relay/use_case/text2sql/context/zero_shot_context"
-
-payload = json.dumps({
-  "contents": [
-    {
-      "parts": [
-        {
-          "text": "hi"
-        }
-      ],
-      "role": "user"
-    }
-  ],
-  "system_instruction": {
-    "parts": [
-      {
-        "text": "You are the CFO. Using the critique agent's feedback, enhance the initial QBR report and generate the final version."
-      }
-    ]
-  }
-})
-headers = {
-  'Content-Type': 'application/json'
-}
-
-response = requests.request("POST", url, headers=headers, data=payload)
-
-print(response.text)
-
-{"candidates":[{"content":{"role":"model","parts":[{"text":"Okay, I need the initial QBR report and the critique agent's feedback to help you enhance it. Please provide both so I can generate a final version.  I'm ready to put on my CFO hat as soon as I have the necessary information!\n"}]},"finishReason":"STOP","avgLogprobs":-0.0900132832703767}],"usageMetadata":{"promptTokenCount":26,"candidatesTokenCount":54,"totalTokenCount":80},"modelVersion":"gemini-1.5-pro-002"}
-
-import vertexai
-from vertexai.generative_models import (
-    FunctionDeclaration,
-    GenerativeModel,
-    Part,
-    Tool,
-    FunctionCall,
-    Content,
-)
-from data_access import BigQueryManager
-from typing import List, Dict, Tuple
 import re
-import json
-import faiss
 import numpy as np
+import faiss
+
+from typing import List, Dict, Tuple
+from data_access import BigQueryManager
 from create_vector_db import get_embeddings
 
 
+class VegasAgent:
+    """
+    This class replaces the previous Gemini-based agent usage with
+    a Vegas LLM API wrapper. All references to Gemini/VertexAI
+    have been removed or replaced. This version uses a REST call
+    to the Vegas endpoint.
+    """
 
-
-
-class GeminiAgent:
     def __init__(self, project_id, dataset_id, location="us-central1"):
         self.project_id = project_id
         self.dataset_id = dataset_id
-        # self.table_id = table_id  # Remove table_id from init
+        # self.table_id will remain dynamic, determined at runtime
+        self.table_id = None
         self.location = location
-        vertexai.init(project=project_id, location=location)
 
-        self.bq_manager = BigQueryManager(project_id, dataset_id)  # Initialize without table_id
+        # Initialize BigQuery manager
+        self.bq_manager = BigQueryManager(project_id, dataset_id)
 
-        # # Retrieve and format the table schema
-        # self.table_schema = self.bq_manager.get_table_schema()
-        # self.formatted_table_schema = self._format_table_schema_for_prompt()
-
-        # Add new function declaration for selecting table
-        self.select_table_func = FunctionDeclaration(
-            name="select_table",
-            description="Select the most relevant table from the dataset based on the user query.",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "table_name": {
-                        "type": "string",
-                        "description": "The name of the table selected by the agent.",
-                    },
-                },
-                "required": ["table_name"],
-            },
-        )
-
-        # Define the function declarations
-        self.get_table_schema_func = FunctionDeclaration(
-            name="get_table_schema",
-            description="Get the schema of the specified table.",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "table_name": {
-                        "type": "string",
-                        "description": "The fully qualified name of the table in the format `project_id.dataset_id.table_id`",
-                    },
-                },
-                "required": ["table_name"],
-            },
-        )
-
-        self.execute_sql_query_func = FunctionDeclaration(
-            name="execute_sql_query",
-            description="Execute a SQL query against the BigQuery database and get the result as json list.",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "sql_query": {
-                        "type": "string",
-                        "description": "The SQL query to execute.",
-                    }
-                },
-                "required": ["sql_query"],
-            },
-        )
-
-        # Add new function declaration for getting distinct values
-        self.get_distinct_values_func = FunctionDeclaration(
-            name="get_distinct_column_values",
-            description="Get a sample of distinct values from a specified column in the table.",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "column_name": {
-                        "type": "string",
-                        "description": "The name of the column to get distinct values from.",
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "The maximum number of distinct values to return.",
-                        "default": 10,
-                    },
-                },
-                "required": ["column_name"],
-            },
-        )
-
-        # Create the tool that includes the function declarations
+        # FAISS-based semantic search setup
         self.index = faiss.read_index("call_center_embeddings.faiss")
         with open("index_data.json", "r") as f:
             self.index_data = json.load(f)
-        
-        # Add new function declaration for semantic search
-        self.semantic_search_func = FunctionDeclaration(
-            name="semantic_search_columns",
-            description="""
-                Performs a semantic search against the database schema and distinct values 
-                to find the most relevant columns for answering the user query.
-                This is powered by a vector database for semantic understanding.
+
+        # Vegas API endpoint (example)
+        self.vegas_url = (
+            "https://vegas-llm-test.ebiz.verizon.com/vegas/apps/prompt/v2/"
+            "relay/use_case/text2sql/context/zero_shot_context"
+        )
+
+        # Placeholders for table schema
+        self.table_schema = []
+        self.formatted_table_schema = ""
+
+        # Example: You might store a default system instruction here, or modify at runtime.
+        self.default_system_text = (
+            "You are a helpful assistant that can analyze user queries related to BigQuery data."
+        )
+
+        # Example column selection usage
+        self.column_selection_examples = [
+            {
+                "context": """
+                Table Name: icm_summary_fact_exp (example schema omitted for brevity)
                 """,
-            parameters={
-                "type": "object",
-                "properties": {
-                    "user_query": {
-                        "type": "string",
-                        "description": "The user's natural language query.",
-                    },
-                },
-                "required": ["user_query"],
+                "question": "What was the average call duration for technical support calls yesterday?",
+                "thoughts": [
+                    "Relevant columns: call_duration_seconds, eccr_dept_nm, call_end_dt."
+                ],
+                "answer": "icm_summary_fact_exp.call_duration_seconds, icm_summary_fact_exp.eccr_dept_nm, icm_summary_fact_exp.call_end_dt",
             },
-        )
-        
-        # Add semantic_search_func to bq_tool
-        self.bq_tool = Tool(
-            function_declarations=[
-                self.get_table_schema_func,
-                self.execute_sql_query_func,
-                self.get_distinct_values_func,
-                self.select_table_func,
-                self.semantic_search_func,  # Add the semantic search function
-            ],
-        )
-
-        # Initialize the Gemini model
-        self.model = GenerativeModel(
-            "gemini-1.5-pro-002",
-            tools=[self.bq_tool], # Add bq_tool to the model
-            generation_config={"temperature": 0},
-        )
-
-        self.chat = self.model.start_chat()
-        self.table_id = None # Initialize table_id to None
-
-    def _semantic_search_columns(self, user_query: str) -> List[str]:
-    """
-    Performs a semantic search using FAISS to find relevant columns and values.
-    Returns the most relevant columns based on both semantic similarity and distance scores.
-    """
-    try:
-        # Get embeddings for the query
-        query_embedding = get_embeddings([user_query])[0]
-        
-        # Normalize the query embedding for cosine similarity
-        query_embedding = np.array([query_embedding], dtype=np.float32).reshape(1, -1)  # Reshape to 2D array
-        faiss.normalize_L2(query_embedding)
-
-        # Search top 10 most similar embeddings (increased from 5)
-        D, I = self.index.search(query_embedding, k=10)
-
-        # Dictionary to store column scores
-        column_scores = {}
-        
-        # Process results
-        for score, idx in zip(D[0], I[0]):
-            # Skip if index is invalid
-            if idx >= len(self.index_data):
-                continue
-                
-            data = self.index_data[idx]
-            
-            # Convert distance to similarity score
-            # Since we're using cosine similarity, the scores are between -1 and 1
-            # Convert to 0-1 range where 1 is most similar
-            similarity = (1 + score) / 2  # Convert from [-1,1] to [0,1] range
-            
-            # Debug logging
-            print(f"Found match: Type={data['type']}, "
-                  f"Score={similarity:.4f}, "
-                  f"Data={data}")
-
-            # Process different types of matches
-            if data["type"] in ["column", "value", "column_description"]:
-                column_name = f"{data['table']}.{data['column']}"
-                
-                # Update score, keeping the highest score for each column
-                if column_name not in column_scores or similarity > column_scores[column_name]:
-                    column_scores[column_name] = similarity
-
-        # Filter columns by similarity threshold (adjusted threshold)
-        threshold = 0.3  # Lower threshold to catch more potential matches
-        relevant_columns = [
-            col for col, score in column_scores.items()
-            if score > threshold
+            {
+                "context": """
+                Same Table: icm_summary_fact_exp
+                """,
+                "question": "How many calls were abandoned yesterday?",
+                "thoughts": [
+                    "Relevant columns: abandons_cnt, call_end_dt."
+                ],
+                "answer": "icm_summary_fact_exp.abandons_cnt, icm_summary_fact_exp.call_end_dt",
+            },
+            # ... Additional examples omitted for brevity ...
         ]
-        
-        # Sort by similarity score
-        relevant_columns.sort(key=lambda x: column_scores[x], reverse=True)
-        
-        # Debug output
-        print("\nColumn Scores:")
-        for col in relevant_columns:
-            print(f"{col}: {column_scores[col]:.4f}")
-        
-        print(f"\nFinal relevant columns: {relevant_columns}")
-        return relevant_columns
 
-    except Exception as e:
-        print(f"Error in semantic search: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+    def _call_vegas_api(self, user_message: str, system_message: str = None) -> str:
+        """
+        Makes a single-turn call to the Vegas LLM API.
+        user_message: The user content to send to the LLM.
+        system_message: An optional system instruction or role content.
+        Returns the model-generated text.
+        """
+        if not system_message:
+            system_message = self.default_system_text
 
-        
+        # Construct the payload in line with the Vegas API format
+        payload = {
+            "contents": [
+                {
+                    "parts": [{"text": user_message}],
+                    "role": "user"
+                }
+            ],
+            "system_instruction": {
+                "parts": [{"text": system_message}]
+            }
+        }
+        headers = {"Content-Type": "application/json"}
+
+        # Make the request
+        try:
+            response = requests.post(
+                self.vegas_url, headers=headers, data=json.dumps(payload), timeout=60
+            )
+            response_json = response.json()
+        except Exception as e:
+            print(f"Error calling Vegas API: {e}")
+            return ""
+
+        # Parse out the response text from the first candidate
+        try:
+            return response_json["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            return ""
+
     def _select_table(self, user_query: str) -> str:
         """
-        Uses the Gemini model to select the most relevant table based on the user query.
+        Uses the Vegas LLM to select the most relevant table based on user query.
+        Previously used Gemini; now replaced with a single-turn Vegas LLM call.
         """
         table_descriptions = self.bq_manager.get_table_descriptions()
-        
-        prompt = f"""
-        You are a table selection agent. You are given a user query and a set of tables with their descriptions.
-        Your task is to determine which table is most likely to contain the information needed to answer the query.
-
-        User Query: '{user_query}'
-
-        Available Tables:
-        """
+        prompt = (
+            "You are a table selection agent. You are given a user query and a set of "
+            "tables with their descriptions. Your task is to determine which table is "
+            "most likely to contain the information needed to answer the query.\n\n"
+            f"User Query: '{user_query}'\n\n"
+            "Available Tables:\n"
+        )
         for table_name, description in table_descriptions.items():
             prompt += f"- **{table_name}**: {description}\n"
 
-        prompt += """
-        Based on the user query and the table descriptions, please provide the name of the most relevant table.
-        Return only the table name and nothing else.
-        """
+        prompt += (
+            "\nBased on the user query and the table descriptions, please provide the name "
+            "of the most relevant table. Return only the table name and nothing else."
+        )
 
-        response = self.model.generate_content(prompt)
-        selected_table = response.text.strip()
+        response_text = self._call_vegas_api(prompt)
+        selected_table = response_text.strip()
         print(f"Selected Table: {selected_table}")
         return selected_table
 
     def _extract_intents_and_entities(self, user_query: str) -> Tuple[str, Dict[str, List[str]]]:
         """
-        Extracts intent and entities from the user query using Gemini model's understanding.
-        This is an agentic approach, relying on the model's capabilities instead of predefined patterns.
+        Extracts intent and entities from the user query using the Vegas LLM.
+        This replaces the previous Gemini-based approach.
         """
-
         prompt = f"""
-        You are an expert at understanding user queries related to call center data.
-        Analyze the following user query and extract the user's intent and relevant entities.
+You are an expert at understanding user queries related to call center data.
+Analyze the following user query and extract the user's intent and relevant entities.
 
-        User Query: '{user_query}'
+User Query: '{user_query}'
 
-        ## Intent
+## Intent
 
-        The user's intent should be a single string representing the primary goal of the query. 
-        Choose one of the following possible intents:
+The user's intent should be a single string representing the primary goal of the query.
+Choose one of the following possible intents:
 
-        Possible Intents:
-        - get_call_metrics
-        - get_agent_performance
-        - get_customer_info
-        - get_call_details
-        - get_transfer_info
-        - get_abandon_info
-        - general_query
+Possible Intents:
+- get_call_metrics
+- get_agent_performance
+- get_customer_info
+- get_call_details
+- get_transfer_info
+- get_abandon_info
+- general_query
 
-        If no specific intent is found, use "general_query".
+If no specific intent is found, use "general_query".
 
-        ## Entities
+## Entities
 
-        Entities are specific pieces of information within the user query that are relevant to the intent.
-        Extract entity values directly from the user query. **Do not include column names.**
+Entities are specific pieces of information within the user query that are relevant to the intent.
+Extract entity values directly from the user query. **Do not include column names.**
 
-        Possible Entity Types:
-        - DATE_RANGE
-        - TIME
-        - METRIC
-        - TOPIC
-        - AGENT_NAME
-        - CUSTOMER_SEGMENT
-        - TRANSFER_STATUS
-        - CALL_DISPOSITION
-        - BUSINESS_UNIT
-        - CALL_CENTER
-        - PHONE_NUMBER
-        - REGION
-        - BUSINESS_RULE
-        - SUPER_BUSINESS_RULE
-        - SUPER_SKILL_GROUP
-        - SUPER_CALL_TYPE
+Possible Entity Types:
+- DATE_RANGE
+- TIME
+- METRIC
+- TOPIC
+- AGENT_NAME
+- CUSTOMER_SEGMENT
+- TRANSFER_STATUS
+- CALL_DISPOSITION
+- BUSINESS_UNIT
+- CALL_CENTER
+- PHONE_NUMBER
+- REGION
+- BUSINESS_RULE
+- SUPER_BUSINESS_RULE
+- SUPER_SKILL_GROUP
+- SUPER_CALL_TYPE
 
-        ## Output Format
+## Output Format
 
-        Provide the output in **valid JSON format** with **exactly two keys**: "intent" and "entities".
+Provide the output in **valid JSON format** with **exactly two keys**: "intent" and "entities".
 
-        - **"intent"**: A string representing the identified intent.
-        - **"entities"**: A dictionary where:
-            - Keys are entity types (e.g., "DATE_RANGE", "METRIC"). Use the exact entity type names listed above.
-            - Values are lists of strings containing the extracted entity values.
+- **"intent"**: A string representing the identified intent.
+- **"entities"**: A dictionary where:
+    - Keys are entity types (e.g., "DATE_RANGE", "METRIC").
+    - Values are lists of strings containing the extracted entity values.
 
-        **Strictly follow the JSON format. Do not deviate.**
-        **Do not include any additional text or explanation outside of the JSON object.**
-        **Do not include backticks (```) or the word "json" in your response.**
-        **Do not put any newlines or spaces at the beginning or end of your response**
-        **Do not use escape characters like '\\n' in your response.**
-        **Do not hallucinate any entity value which is not present in user query**
-        **Under no circumstances should you break any of the above instructions.**
+**Strictly follow the JSON format. Do not deviate.
+Do not include any additional text or explanation outside of the JSON object.
+Do not include backticks (```) or the word "json" in your response. Do not put any newlines or spaces at the beginning or end of your response. Do not use escape characters like '\\n' in your response. Do not hallucinate any entity value which is not present in user query. Under no circumstances should you break any of the above instructions.**
 
-        ## Examples
+Examples
+Example 1: User Query: 'What was the average call duration for technical support calls yesterday?' Output: {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["yesterday"], "METRIC": ["call duration"], "TOPIC": ["technical support"]}}}}
 
-        Here are a few examples to illustrate the expected output format:
+Example 2: User Query: 'How many calls were abandoned last week?' Output: {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["last week"], "CALL_DISPOSITION": ["abandoned"]}}}}
 
-        **Example 1:**
-        User Query: 'What was the average call duration for technical support calls yesterday?'
-        Output:
-        {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["yesterday"], "METRIC": ["call duration"], "TOPIC": ["technical support"]}}}}
-
-        **Example 2:**
-        User Query: 'How many calls were abandoned last week?'
-        Output:
-        {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["last week"], "CALL_DISPOSITION": ["abandoned"]}}}}
-
-        **Example 3:**
-        User Query: 'What is the handle time for calls from the billing department on 2023-03-15?'
-        Output:
-        {{"intent": "get_call_metrics", "entities": {{"DATE_RANGE": ["2023-03-15"], "METRIC": ["handle time"], "TOPIC": ["billing"]}}}}
-
-        **Example 4 (No specific intent/entities):**
-        User Query: 'List all columns of the table.'
-        Output:
-        {{"intent": "general_query", "entities": {{}}}}
-
-        Now, analyze the user query provided at the beginning and provide the intent and entities in the specified JSON format.
-        """
-
-        response = self.model.generate_content(prompt)
+Now, analyze the user query provided at the beginning and provide the intent and entities in the specified JSON format. """
+        response_text = self._call_vegas_api(prompt)
         try:
-            response_json = json.loads(response.text)
+            response_json = json.loads(response_text)
             intent = response_json.get("intent", "general_query")
             entities = response_json.get("entities", {})
             return intent, entities
-
         except (json.JSONDecodeError, AttributeError):
-            print(f"Error decoding intent/entity extraction response: {response.text}")
-            return "general_query", {} 
+            print(f"Error decoding intent/entity extraction response: {response_text}")
+            return "general_query", {}
 
-    
     def _map_entities_to_columns_agentic(self, extracted_entities: Dict[str, List[str]]) -> Dict[str, List[str]]:
         """
-        Agentically maps extracted entities to their corresponding database columns using the Gemini model.
+        Agentic approach using the Vegas LLM to map extracted entities to corresponding columns.
         """
         if not extracted_entities:
             return {}
-
+        # We'll assume self.formatted_table_schema has some textual description
         entity_mapping_prompt = f"""
-        You are an expert in understanding the schema of a call center data table.
-        You are given a set of entities extracted from a user query and the schema of the table.
-        Your task is to map these entities to the most relevant columns in the table based on their meaning and context.
+You are an expert in understanding the schema of a call center data table. You are given a set of entities extracted from a user query and the schema of the table. Your task is to map these entities to the most relevant columns in the table based on their meaning and context.
 
-        Table Schema:\n{self.formatted_table_schema}
+Table Schema: {self.formatted_table_schema}
 
-        Extracted Entities:\n{json.dumps(extracted_entities, indent=2)}
+Extracted Entities: {json.dumps(extracted_entities, indent=2)}
 
-        Provide the output in **valid JSON format** where keys are entity types (e.g., "DATE_RANGE") and values are lists of corresponding column names from the table schema.
-        **Do not include any additional text or explanation outside of the JSON object.**
-        **Do not include backticks (```) or the word "json" in your response.
-        **Do not put any newlines or spaces at the beginning or end of your response.**
-        **Do not use escape characters like '\\n' in your response.**
-        **Under no circumstances should you break any of the above instructions.**
+Provide the output in valid JSON format where keys are entity types and values are lists of corresponding column names. Do not include any additional text or explanation outside of the JSON object. Do not include backticks (```)
 
-        Focus on semantic relevance:
-          - "call duration" should map to "call_duration_seconds"
-          - "handle time" should map to "handle_tm_seconds"
-          - "hold time" should map to "hold_tm_seconds"
-          - "talk time" should map to "talk_tm_seconds"
-          - "ring time" should map to "ring_tm_seconds"
-          - "delay time" should map to "delay_tm_seconds"
-          - "abandon rate" should map to "abandons_cnt"
-          - "call count" should map to "answered_cnt"
-          - "DATE_RANGE" : ["call_end_dt", "call_answer_dt"]
-          - "TOPIC" : ["acd_area_nm", "script_nm", "eccr_dept_nm", "bus_rule", "super_bus_rule"]
-          - "CUSTOMER_SEGMENT" : ["icm_acct_type_cd", "cust_value"]
-          - "AGENT_NAME/ID": [] 
-          - "TRANSFER_STATUS" : ["transfer_flag", "transfer_point"]
-          - "CALL_DISPOSITION" : ["final_call_dispo", "call_dispo_flag", "abandons_cnt", "answered_cnt"]
-          - "BUSINESS_UNIT": ["eccr_line_bus_nm", "eccr_super_line_bus_nm"]
-          - "CALL_CENTER": ["eccr_call_ctr_cd"]
-          - "PHONE_NUMBER": ["mtn"]
-          - "REGION": ["callers_region"]
-          - "BUSINESS_RULE": ["bus_rule"]
-          - "SUPER_BUSINESS_RULE": ["super_bus_rule"]
-          - "SUPER_SKILL_GROUP": ["super_skill_group"]
-          - "SUPER_CALL_TYPE": ["super_call_type"]
+Do not put any newlines or spaces at the beginning or end of your response.
+Do not use escape characters like '\\n' in your response.
+Under no circumstances should you break any of the above instructions.
 
-        If an entity type does not have a clear mapping, omit it from the output.
-        If an entity type has multiple possible mappings, include all relevant columns.
-
-        Example:
-        Extracted Entities:
-        {{
-          "DATE_RANGE": ["yesterday"],
-          "METRIC": ["call duration", "handle time"],
-          "TOPIC": ["billing"]
-        }}
-        Output:
-        {{"DATE_RANGE": ["call_end_dt"], "METRIC": ["call_duration_seconds", "handle_tm_seconds"], "TOPIC": ["eccr_dept_nm"]}}
+Map known METRIC keywords to columns, for example:
+- "call duration" -> "call_duration_seconds"
+- "handle time" -> "handle_tm_seconds"
+- "abandon" -> "abandons_cnt"
+- etc.
         """
 
-        response = self.model.generate_content(entity_mapping_prompt)
+        response_text = self._call_vegas_api(entity_mapping_prompt)
         try:
-            response_json = json.loads(response.text)
+            response_json = json.loads(response_text)
             return response_json
         except (json.JSONDecodeError, AttributeError):
-            print(f"Error decoding entity-column mapping response: {response.text}")
+            print(f"Error decoding entity-column mapping response: {response_text}")
             return {}
 
+    def _semantic_search_columns(self, user_query: str) -> List[str]:
+        """
+        Performs semantic search using FAISS to find relevant columns and values.
+        Returns the most relevant columns based on similarity scores.
+        """
+        try:
+            # Embed the query
+            query_embedding = get_embeddings([user_query])[0]
+            query_embedding = np.array([query_embedding], dtype=np.float32).reshape(1, -1)
+            faiss.normalize_L2(query_embedding)
+
+            # Search top 10
+            D, I = self.index.search(query_embedding, k=10)
+
+            column_scores = {}
+
+            for score, idx in zip(D[0], I[0]):
+                if idx >= len(self.index_data):
+                    continue
+
+                data = self.index_data[idx]
+                similarity = (1 + score) / 2  # Convert [-1,1] to [0,1]
+                if data["type"] in ["column", "value", "column_description"]:
+                    col_name = f"{data['table']}.{data['column']}"
+                    if col_name not in column_scores or similarity > column_scores[col_name]:
+                        column_scores[col_name] = similarity
+
+            threshold = 0.3
+            relevant_columns = [
+                col for col, sc in column_scores.items() if sc > threshold
+            ]
+            relevant_columns.sort(key=lambda x: column_scores[x], reverse=True)
+            return relevant_columns
+        except Exception as e:
+            print(f"Error in semantic search: {e}")
+            return []
+
     def _format_table_schema_for_prompt(self) -> str:
-        """Formats the table schema into a string for the Gemini prompt."""
+        """
+        Formats the table schema so it can be included in LLM prompts.
+        """
         if not self.table_schema:
             return ""
 
         formatted_schema = f"Table: {self.table_id}\n"
         for field in self.table_schema:
-            formatted_schema += (
-                f"- {field['name']}: {field['type']}"
-                f"{' (' + field['description'] + ')' if field['description'] else ''}\n"
+            col_desc = (
+                f" ({field['description']})" if field.get("description") else ""
             )
+            formatted_schema += f"- {field['name']}: {field['type']}{col_desc}\n"
         return formatted_schema
 
     def _generate_sql_prompt(
@@ -473,403 +310,191 @@ class GeminiAgent:
         intent: str,
         entity_mapping: Dict[str, List[str]],
         error_message: str = None,
-    ) -> List[Part]:
-        """Generates a prompt for the Gemini model to generate a SQL query, returning a list of Parts."""
+    ) -> str:
+        """
+        Generates a single text prompt for the Vegas LLM to produce a SQL query.
+        Previously used multiple parts with Gemini; now collapsed into a single string.
+        """
 
-        # Get the fully qualified table name
         full_table_name = f"`{self.project_id}.{self.dataset_id}.{self.table_id}`"
 
-        # Basic prompt components, each formatted as a Part
-        prompt_parts = [
-            Part.from_text(
-                "You are a helpful assistant that can convert natural language into SQL queries for Bigquery."
-            ),
-            Part.from_text(
-                f"You have access to the following BigQuery table:\n{full_table_name}\n{self.formatted_table_schema}"
-            ),
-            Part.from_text(
-                f"Convert the following natural language query into a SQL query:\n{user_query}"
-            ),
-            Part.from_text(f"Identified intent: {intent}"),
-        ]
+        # Start building the prompt
+        prompt = (
+            "You are a helpful assistant that can convert natural language into SQL queries for BigQuery.\n\n"
+            f"You have access to the following BigQuery table:\n{full_table_name}\n\n"
+            f"Table Schema:\n{self.formatted_table_schema}\n\n"
+            f"Convert the following natural language query into a SQL query:\n{user_query}\n\n"
+            f"Identified intent: {intent}\n"
+        )
 
-        # Add entity-column mapping information
+        # Add entity-to-column mapping
         if entity_mapping:
-            entity_mapping_text = "\nRelevant entities and their mappings to columns:"
+            prompt += "\nRelevant entities mapped to columns:\n"
             for entity_type, columns in entity_mapping.items():
-                for column in columns:
-                    entity_mapping_text += f"\n- {entity_type} -> {column}"
-            prompt_parts.append(Part.from_text(entity_mapping_text))
+                prompt += f" - {entity_type}: {columns}\n"
 
-        # Add error message if available
+        # If there's an error from a previous attempt
         if error_message:
-            prompt_parts.append(
-                Part.from_text(
-                    f"\nPrevious SQL query generated an error: {error_message}\nPlease fix the SQL query based on this error message."
-                )
+            prompt += (
+                f"\nThe previous SQL query caused an error: {error_message}\n"
+                "Please generate a corrected SQL query.\n"
             )
 
-        # Add instructions for SQL generation
-        instructions = """
-        \nInstructions:
-        - Generate a syntactically correct BigQuery SQL query.
-        - Only use the table and columns mentioned in the schema.
-        - Do not use table aliases unless necessary.
-        - Use aggregate functions (COUNT, AVG, MIN, MAX, SUM) when appropriate.
-        - Format dates and times correctly for comparisons.
-        - Handle NULL values appropriately.
-        - If a question is ambiguous, generate the most likely interpretation.
-        - Make sure to add single quotes around the string values.
-        - Dont add any extra information in the response apart from SQL query.
-        - If you need to know the possible values in a column, use the `get_distinct_column_values` function to get a sample of distinct values.
+        # Basic instructions for BigQuery SQL
+        prompt += """
+Instructions:
+- Generate a syntactically correct BigQuery SQL query.
+- Only use the table and columns mentioned in the schema.
+- Do not use table aliases unless necessary.
+- Use aggregate functions (COUNT, AVG, MIN, MAX, SUM) when appropriate.
+- Format dates and times correctly for comparisons.
+- Handle NULL values appropriately.
+- If a question is ambiguous, generate the most likely interpretation.
+- Make sure to add single quotes around string values.
+- Do not add any explanations, only provide the final SQL query.
+If you need possible values in a column, mention it or ask for them explicitly.
+"""
+
+        return prompt
+
+    def _select_relevant_columns(self, user_query: str) -> List[str]:
         """
-        prompt_parts.append(Part.from_text(instructions))
-
-        # Add few-shot examples based on intent (can be expanded)
-        if intent == "get_call_metrics":
-            examples = """
-            Examples:
-            Question: How many calls were abandoned yesterday?
-            SQL: SELECT COUNT(*) FROM `vz-it-pr-gk1v-cwlsdo-0.vzw_uda_prd_tbls_rd_v.icm_summary_fact_exp` WHERE DATE(call_end_dt) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AND abandons_cnt > 0
-
-            Question: What is the average handle time for calls from the 'billing' department last week?
-            SQL: SELECT AVG(handle_tm_seconds) FROM `vz-it-pr-gk1v-cwlsdo-0.vzw_uda_prd_tbls_rd_v.icm_summary_fact_exp` WHERE eccr_dept_nm = 'billing' AND call_end_dt BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 8 DAY) AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-            """
-            prompt_parts.append(Part.from_text(examples))
-
-        return prompt_parts
-
-    def _generate_column_selection_examples(self) -> str:
+        Uses the Vegas LLM to select relevant columns for the user query.
+        This is a simplified approach, previously done via multi-part Gemini chat.
+        Here, we build a single prompt with examples.
         """
-        Generates few-shot examples for column selection using the provided JSON data.
-        """
+        # Build few-shot examples from self.column_selection_examples
         examples = ""
         for example in self.column_selection_examples:
             examples += f"""
-            Context: {example['context']}
-            Question: {example['question']}
-            Thoughts: {example['thoughts']}
-            Answer: {example['answer']}
-            ---
-            """
-        return examples
+Context: {example['context']}
+Question: {example['question']}
+Thoughts: {example['thoughts']}
+Answer: {example['answer']}
+---
+"""
 
-    def _generate_column_selection_prompt(self, user_query: str) -> str:
-        """
-        Generates a prompt for the Gemini model to select relevant columns, including few-shot examples.
-        """
-        examples = self._generate_column_selection_examples()
+        prompt = (
+            "You are an expert in selecting the most relevant columns from a SQL table "
+            "based on a natural language question. You are given the table schema and "
+            "a user question. Your task is to identify the columns that are most likely "
+            "to be needed to answer the question.\n\n"
+            f"{examples}\n"
+            f"Table Schema:\n{self.formatted_table_schema}\n\n"
+            f"User Question: {user_query}\n\n"
+            "Think step by step and select only the column names that are most relevant.\n"
+            "Provide the output as a comma-separated list of column names (no quotes, no brackets):"
+        )
 
-        prompt = f"""
-        You are an expert in selecting the most relevant columns from a SQL table based on a natural language question.
-        You are given the table schema and a user question.
-        Your task is to identify the columns that are most likely to be needed to answer the question.
-
-        {examples}
-
-        Table Schema:\n{self.formatted_table_schema}
-
-        User Question: {user_query}
-
-        Think step by step and select only the column names that are most relevant to answering the question.
-        Provide the output as a comma-separated list of column names **without any surrounding quotes or brackets.
-        Do not include any additional text or explanation outside of the comma-separated list of column names.
-        **Do not include backticks (```) or the words "Output:", "Answer:" in your response. Do not add any prefix or suffix.**
-        """
-        return prompt
-        
-    def _select_relevant_columns(self, user_query: str) -> List[str]:
-        """
-        Uses the Gemini model to select relevant columns for answering the user query.
-        """
-        prompt = self._generate_column_selection_prompt(user_query)
-        response = self.model.generate_content(prompt)
-        try:
-            # Assuming the model returns a comma-separated list of column names
-            columns = [
-                col.strip() for col in response.text.split(",") if col.strip()
-            ]
-            return columns
-        except (AttributeError, TypeError):
-            print(f"Error processing column selection response: {response.text}")
-            return []
-
-
-    def _handle_function_call(self, response: Part) -> Part:
-        """Handles function calls from the model."""
-        function_name = response.function_call.name
-        print(f"Model called function: {function_name}")
-
-        if function_name == "get_table_schema":
-            # For get_table_schema, prepare the response with the formatted schema
-            function_response = Part.from_function_response(
-                name=function_name,
-                response={
-                    "content": self.formatted_table_schema,
-                },
-            )
-        elif function_name == "execute_sql_query":
-            # For execute_sql_query, execute the query and return the results
-            arguments = dict(response.function_call.args)
-            sql_query = arguments["sql_query"]
-            print(f"Executing SQL query: {sql_query}")
-            try:
-                query_results = self.bq_manager.execute_query(sql_query)
-                function_response = Part.from_function_response(
-                    name=function_name,
-                    response={
-                        "content": str(query_results),
-                    },
-                )
-            except Exception as e:
-                error_message = f"Error executing query: {e}"
-                function_response = Part.from_function_response(
-                    name=function_name, response={"content": error_message}
-                )
-        elif function_name == "get_distinct_column_values":
-            # Handle the new function call to get distinct values
-            arguments = dict(response.function_call.args)
-            column_name = arguments["column_name"]
-            limit = arguments.get("limit", 10)  # Default limit is 10
-            print(f"Getting distinct values for column: {column_name} (limit: {limit})")
-
-            try:
-                distinct_values = self.bq_manager.get_distinct_values(column_name, self.table_id, limit)
-                function_response = Part.from_function_response(
-                    name=function_name,
-                    response={
-                        "content": str(distinct_values),
-                    },
-                )
-            except Exception as e:
-                error_message = f"Error getting distinct values: {e}"
-                function_response = Part.from_function_response(
-                    name=function_name, response={"content": error_message}
-                )
-        elif function_name == "select_table":
-            # Handle the new function call to select table
-            arguments = dict(response.function_call.args)
-            table_name = arguments["table_name"]
-
-            try:
-                function_response = Part.from_function_response(
-                    name=function_name,
-                    response={
-                        "content": table_name
-                    }
-                )
-            
-            except Exception as e:
-                error_message = f"Error in selecting table: {e}"
-                function_response = Part.from_function_response(
-                    name=function_name, response={"content": error_message}
-                )
-        elif function_name == "semantic_search_columns":
-            # Handle the semantic search function call
-            arguments = dict(response.function_call.args)
-            user_query = arguments["user_query"]
-            print(f"Performing semantic search for query: {user_query}")
-
-            try:
-                relevant_columns = self._semantic_search_columns(user_query)
-                function_response = Part.from_function_response(
-                    name=function_name,
-                    response={
-                        "content": str(relevant_columns),  # Return as a string representation of the list
-                    },
-                )
-            except Exception as e:
-                error_message = f"Error during semantic search: {e}"
-                function_response = Part.from_function_response(
-                    name=function_name, response={"content": error_message}
-                )
-        else:
-            raise ValueError(f"Unknown function: {function_name}")
-
-        return function_response
-
+        response_text = self._call_vegas_api(prompt)
+        # Attempt to split on commas:
+        columns = [col.strip() for col in response_text.split(",") if col.strip()]
+        return columns
 
     def _extract_sql_query(self, response_text: str) -> str:
         """
-        Extracts the SQL query from the response text, removing only the
-        beginning and ending triple backticks if they are part of a code block.
+        Attempt to extract a SQL query from triple backticks if present;
+        otherwise, return the text as-is.
         """
-        # Updated regex to correctly capture SQL query within triple backticks
-        match = re.search(r"```sql\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE)
+        match = re.search(r"```sql\s*(.*?)\s*```", response_text, re.DOTALL)
         if match:
-            sql_query = match.group(1).strip()
-            print(f"Extracted SQL Query (before processing): {sql_query}")
-            return sql_query
-        else:
-            print(f"No SQL query found in response: {response_text}")
-            return ""
+            return match.group(1).strip()
+        return response_text.strip()
 
-    
     def process_query(self, user_query: str, max_iterations: int = 3) -> str:
-        """Processes the user query with iterative error correction."""
-        
-        # Select the table first
+        """
+        Main entry point to process a user query:
+         1) Select the relevant table
+         2) Extract intent and entities
+         3) Map entities to columns
+         4) Perform semantic search for columns
+         5) Generate a SQL query
+         6) Execute it with BigQuery
+         7) Summarize the results
+        """
+
+        # 1) Select table
         self.table_id = self._select_table(user_query)
-        print(f"selected table id : {self.table_id}")
         if not self.table_id:
             return "Could not determine the appropriate table for the query."
-    
-        # Update BigQuery Manager with selected table
+        print(f"Selected table id: {self.table_id}")
+
+        # 2) Retrieve table schema for prompts
         self.bq_manager.table_id = self.table_id
-        
-        # Retrieve and format the table schema for the selected table
         self.table_schema = self.bq_manager.get_table_schema(self.table_id)
         self.formatted_table_schema = self._format_table_schema_for_prompt()
-        
-        # Agentic intent and entity extraction
+
+        # 3) Intent & entity extraction
         intent, extracted_entities = self._extract_intents_and_entities(user_query)
-        
-        # Agentic entity-column mapping
+
+        # 4) Entity to column mapping
         entity_mapping = self._map_entities_to_columns_agentic(extracted_entities)
-        
-        # Agentic column selection using the dedicated function
+
+        # 5) Column selection
         selected_columns = self._select_relevant_columns(user_query)
         print(f"Selected columns: {selected_columns}")
-    
-        # Create semantic search message using proper Content and Part structure
-        semantic_message = Content(
-            parts=[
-                Part.from_text("Find relevant columns for the query using semantic search."),
-                Part.from_function_response(
-                    name="semantic_search_columns",
-                    response={
-                        "content": user_query
-                    }
-                )
-            ],
-            role="user"
-        )
-        
-        # Send the semantic search message
-        semantic_response = self.chat.send_message(semantic_message)
-        
-        # Process the semantic search results
-        if semantic_response.candidates[0].content:
-            relevant_columns = self._semantic_search_columns(user_query)
-            print(f"Semantic search columns: {relevant_columns}")
-            
-            # Combine selected columns with semantically relevant columns
-            selected_columns.extend(relevant_columns)
-            selected_columns = list(set(selected_columns))  # Remove duplicates
-            print(f"Combined selected columns: {selected_columns}")
-        
+
+        # 6) Semantic search to refine column selection
+        relevant_semantic_cols = self._semantic_search_columns(user_query)
+        selected_columns = list(set(selected_columns + relevant_semantic_cols))
+        print(f"Combined selected columns after semantic search: {selected_columns}")
+
+        # Attempt iterative SQL generation & correction
         error_message = None
-    
-
         for iteration in range(max_iterations):
-            print(f"Iteration: {iteration + 1}")
-            # Generate prompt based on user query, intent, entities, and any previous error
-            sql_prompt_parts = self._generate_sql_prompt(
-                user_query, intent, entity_mapping, error_message
-            )
+            print(f"Iteration {iteration + 1} of {max_iterations}...")
+            sql_prompt = self._generate_sql_prompt(user_query, intent, entity_mapping, error_message)
+            response_text = self._call_vegas_api(sql_prompt)
 
-            # Send prompt to Gemini and handle function calls
-            response = self.chat.send_message(sql_prompt_parts)
-            print(f"Initial response: {response.candidates[0]}")
-
-            while response.candidates[0].finish_reason == "TOOL":
-                print(f"Function called in loop : {response.candidates[0].finish_reason}")
-                function_response = self._handle_function_call(
-                    response.candidates[0].content.parts[0]
-                )
-                response = self.chat.send_message(function_response)
-
-            # Check if the model generated a SQL query
-            if response.candidates[0].content.parts[0].text:
-                # Extract SQL query, removing backticks
-                sql_query = self._extract_sql_query(
-                    response.candidates[0].content.parts[0].text
-                )
-                print(
-                    f"Extracted SQL Query (before processing): {sql_query}"
-                )  # Keep only one print statement
-
-                # Directly execute the SQL query
-                try:
-                    query_results = self.bq_manager.execute_query(sql_query)
-                    print(f"Query results: {query_results}")
-
-                    # If query execution is successful, construct the response
-                    if query_results:
-                        # Generate a business summary using the new function
-                        summary = self._generate_business_summary(
-                            user_query, intent, extracted_entities, query_results
-                        )
-                        return summary  # Return the summary
-                    else:
-                        error_message = (
-                            "Query executed successfully but returned no results."
-                        )
-
-                except Exception as e:
-                    error_message = f"Error executing query: {e}"
-                    print(error_message)
-
-                # Update the chat history with the error for the next iteration (if there is one)
-                if iteration < max_iterations - 1:
-                    self.chat.history.append(
-                        Content(
-                            parts=[Part.from_text(f"Error: {error_message}")],
-                            role="user",
-                        )
-                    )
-                    self.chat.history.append(
-                        Content(
-                            parts=[
-                                Part.from_text(
-                                    f"Please provide the corrected SQL query for: {user_query}"
-                                )
-                            ],
-                            role="model",
-                        )
-                    )
-                else:
-                    return (
-                        error_message
-                        if error_message
-                        else "Max iterations reached without a successful query."
-                    )
-
-            else:
-                # Handle cases where no SQL query is generated
-                error_message = "No SQL query generated."
+            if not response_text:
+                error_message = "No SQL query generated or empty response from Vegas."
                 print(error_message)
-                return error_message
+                if iteration == max_iterations - 1:
+                    return error_message
+                continue
+
+            # 7) Extract SQL and try executing
+            sql_query = self._extract_sql_query(response_text)
+            print(f"Attempted SQL query:\n{sql_query}")
+
+            try:
+                query_results = self.bq_manager.execute_query(sql_query)
+                if query_results:
+                    # 8) Summarize results for business
+                    summary = self._generate_business_summary(user_query, intent, extracted_entities, query_results)
+                    return summary
+                else:
+                    error_message = "Query executed but returned no results."
+                    print(error_message)
+            except Exception as e:
+                error_message = f"Error executing query: {e}"
+                print(error_message)
+
+            if iteration == max_iterations - 1:
+                return "Max iterations reached without a successful query."
 
         return "Max iterations reached without a successful query."
-        
+
     def _generate_business_summary(self, user_query: str, intent: str, entities: Dict, results: List[Dict]) -> str:
         """
-        Generates a human-readable summary of the query results for a business audience.
+        Summarizes the query results for a business audience using the Vegas LLM.
         """
         if not results:
             return "No results found for your query."
 
-        summary = ""
-        
-        # Try to understand the user's query using Gemini model
         prompt = f"""
-        You are an expert in summarizing the output of sql queries.
-        User Query: {user_query}
-        Query results: {results}
-        
-        Provide a human-readable summary of the results of query that has been asked in user query, focusing on the key findings.
-        Keep the summary concise and relevant to a business audience,
-        Explain what the query was about and what the results show without going into technical details about the query itself.
-        Do not include any extra information apart from the summary.
-        """
+You are an expert in summarizing SQL query results for a business audience.
 
-        response = self.model.generate_content(prompt)
-        summary = response.text.strip()
+User Query: {user_query}
+Query Results: {results}
 
+Provide a concise, human-readable summary that explains what the user asked and the key findings
+from the data. Keep it free of low-level technical details or unnecessary verbiage.
+"""
+        response_text = self._call_vegas_api(prompt)
+        summary = response_text.strip()
         if not summary:
-            summary = "A summary couldn't be generated based on the available information."
-        
+            summary = "A summary could not be generated based on the available information."
         return summary
      
     # Define the function declarations
