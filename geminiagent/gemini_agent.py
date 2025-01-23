@@ -1,3 +1,8 @@
+Error calling Vegas API: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+Selected Table: 
+Final Response: Could not determine the appropriate table for the query.
+
+
 import requests
 import json
 import re
