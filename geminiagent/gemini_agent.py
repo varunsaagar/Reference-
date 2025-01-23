@@ -1,8 +1,69 @@
-Error calling Vegas API: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
-Selected Table: 
-Final Response: Could not determine the appropriate table for the query.
+import requests
+import json
+import os
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# Suppress only the single InsecureRequestWarning from urllib3
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+url = "https://vegas-llm-test.ebiz.verizon.com/vegas/apps/prompt/v2/relay/use_case/text2sql/context/zero_shot_context"
+
+payload = json.dumps({
+    "contents": [
+        {
+            "parts": [
+                {
+                    "text": "hi"
+                }
+            ],
+            "role": "user"
+        }
+    ],
+    "system_instruction": {
+        "parts": [
+            {
+                "text": "You are the CFO. Using the critique agent's feedback, enhance the initial QBR report and generate the final version."
+            }
+        ]
+    }
+})
+headers = {
+    'Content-Type': 'application/json'
+}
+
+# Get proxy settings from environment variables
+http_proxy = os.environ.get('http_proxy')
+https_proxy = os.environ.get('https_proxy')
+
+# Configure proxy settings for requests
+proxies = {
+    "http": http_proxy,
+    "https": https_proxy,
+}
 
 
+
+# Make the request using the configured proxies
+try:
+    response = requests.request("POST", url, headers=headers, data=payload, proxies=proxies, verify=False)
+except requests.exceptions.ProxyError as e:
+    print(f"Error: Could not connect to proxy: {e}")
+    print("Please verify that the proxy settings are correct and the proxy server is reachable.")
+    exit()
+except requests.exceptions.SSLError as e:
+    print(f"Error: SSL verification failed: {e}")
+    print("If using a self-signed certificate, ensure it's added to the trusted store or consider using 'verify=False' (not recommended for production).")
+    exit()
+except requests.exceptions.ConnectionError as e:
+    print(f"Error: Could not connect to the URL: {e}")
+    print("Check network connectivity and the URL's availability.")
+    exit()
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    exit()
+
+# Print the response
+print(response.text)
 import requests
 import json
 import re
