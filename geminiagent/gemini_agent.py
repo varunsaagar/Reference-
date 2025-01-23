@@ -30,6 +30,8 @@ response = requests.request("POST", url, headers=headers, data=payload)
 
 print(response.text)
 
+{"candidates":[{"content":{"role":"model","parts":[{"text":"Okay, I need the initial QBR report and the critique agent's feedback to help you enhance it. Please provide both so I can generate a final version.  I'm ready to put on my CFO hat as soon as I have the necessary information!\n"}]},"finishReason":"STOP","avgLogprobs":-0.0900132832703767}],"usageMetadata":{"promptTokenCount":26,"candidatesTokenCount":54,"totalTokenCount":80},"modelVersion":"gemini-1.5-pro-002"}
+
 import vertexai
 from vertexai.generative_models import (
     FunctionDeclaration,
