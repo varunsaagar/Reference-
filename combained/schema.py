@@ -1,4 +1,6 @@
-{
+curl --location 'https://vegas-llm.verizon.com/vegas/apps/prompt/LLMInsight' \
+--header 'Content-Type: application/json' \
+--data '{
     "useCase": "convoiq_gemini",
     "contextId": "convoiq_exploratory_analysis_gem15pro",
     "parameters": {
@@ -25,7 +27,48 @@
     "preSeed_injection_map": {
         "": "Who are you?"
     }
+}'
+
+import requests
+import json
+
+url = "https://vegas-llm.verizon.com/vegas/apps/prompt/LLMInsight"
+
+payload = json.dumps({
+  "useCase": "convoiq_gemini",
+  "contextId": "convoiq_exploratory_analysis_gem15pro",
+  "parameters": {
+    "temperature": 0.9,
+    "maxOutputTokens": 2048,
+    "topP": 1,
+    "responseMimeType": "application/json",
+    "responseSchema": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "sentiment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary",
+        "sentiment"
+      ]
+    }
+  },
+  "preSeed_injection_map": {
+    "": "Who are you?"
+  }
+})
+headers = {
+  'Content-Type': 'application/json'
 }
+
+response = requests.request("POST", url, headers=headers, data=payload)
+
+print(response.text)
 
 
 import json
