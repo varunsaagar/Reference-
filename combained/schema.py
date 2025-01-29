@@ -1,8 +1,3 @@
-{"vegasTransactionId":"dd4301e0-0028-4edf-8be7-3c3c9d07d48f","errorCode":"424 FAILED_DEPENDENCY","message":"400 Bad Request: \"[{<EOL>  \"error\": {<EOL>    \"code\": 400,<EOL>    \"message\": \"Request contains an invalid argument.\",<EOL>    \"status\": \"INVALID_ARGUMENT\"<EOL>  }<EOL>}<EOL>]\"","statusCode":424,"statusName":"FAILED_DEPENDENCY","path":"/vegas/apps/prompt/LLMInsight","method":"POST","timestamp":"2025-01-29T19:26:22.101028747"}
-
-
-
-
 import requests
 import json
 
@@ -17,7 +12,7 @@ payload = json.dumps({
         "topP": 1,
         "responseMimeType": "application/json",
         "responseSchema": {
-            "type": "OBJECT",  # Added type here
+            "type": "OBJECT",
             "properties": {
                 "summary": {
                     "type": "STRING"
@@ -50,18 +45,10 @@ payload = json.dumps({
                                 ]
                             },
                             "relevant_phrases": {
-                                "type": "ARRAY", #added type array 
-                                "oneOf": [
-                                    {
-                                        "type": "STRING"
-                                    },
-                                    {
-                                        "type": "ARRAY",
-                                        "items": {
-                                            "type": "STRING"
-                                        }
-                                    }
-                                ]
+                                "type": "ARRAY",
+                                "items": {
+                                    "type": "STRING"
+                                }
                             }
                         },
                         "required": [
@@ -83,11 +70,11 @@ payload = json.dumps({
                 },
                 "customer_intention_secondary": {
                     "type": "STRING",
-                    "nullable": true
+                    "nullable": True  # Consider removing if causing issues
                 },
                 "confidence_score_customer_intention_secondary": {
                     "type": "INTEGER",
-                    "nullable": true
+                    "nullable": True  # Consider removing if causing issues
                 },
                 "customer_satisfied": {
                     "type": "STRING",
@@ -309,7 +296,7 @@ payload = json.dumps({
         }
     },
     "preSeed_injection_map": {
-        "": "Who are you?"
+        "": "Who are you?"  # Consider removing if not needed
     }
 })
 headers = {
