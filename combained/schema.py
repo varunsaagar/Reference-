@@ -14,13 +14,13 @@ payload = json.dumps({
         "topP": 1,
         "responseMimeType": "application/json",
         "responseSchema": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "summary": {
-                    "type": "STRING"
+                    "type": "string"
                 },
                 "sentiment": {
-                    "type": "STRING",
+                    "type": "string",
                     "enum": [
                         "negative",
                         "positive",
@@ -28,18 +28,18 @@ payload = json.dumps({
                     ]
                 },
                 "topics": {
-                    "type": "ARRAY",
+                    "type": "array",
                     "items": {
-                        "type": "OBJECT",
+                        "type": "object",
                         "properties": {
                             "topic": {
-                                "type": "STRING"
+                                "type": "string"
                             },
                             "confidence_score": {
-                                "type": "INTEGER"
+                                "type": "integer"
                             },
                             "sentiment": {
-                                "type": "STRING",
+                                "type": "string",
                                 "enum": [
                                     "negative",
                                     "positive",
@@ -47,10 +47,7 @@ payload = json.dumps({
                                 ]
                             },
                             "relevant_phrases": {
-                                "type": "ARRAY",
-                                "items": {
-                                    "type": "STRING"
-                                }
+                                "type": "string"
                             }
                         },
                         "required": [
@@ -62,112 +59,33 @@ payload = json.dumps({
                     }
                 },
                 "intention": {
-                    "type": "STRING"
-                },
-                "confidence_score_overall": {
-                    "type": "INTEGER"
-                },
-                "customer_intention": {
-                    "type": "STRING"
-                },
-                "customer_intention_secondary": {
-                    "type": "STRING",
-                    "nullable": True  # Consider removing if causing issues
-                },
-                "confidence_score_customer_intention_secondary": {
-                    "type": "INTEGER",
-                    "nullable": True  # Consider removing if causing issues
+                    "type": "string"
                 },
                 "customer_satisfied": {
-                    "type": "STRING",
-                    "enum": [
-                        "Yes",
-                        "No"
-                    ]
+                    "type": "boolean"
                 },
                 "agent_resolution": {
-                    "type": "STRING"
+                    "type": "string"
                 },
                 "agent_resolved_customer_concern": {
-                    "type": "STRING",
-                    "enum": [
-                        "yes",
-                        "no"
-                    ]
-                },
-                "supervisor_escalation": {
-                    "type": "STRING",
-                    "enum": [
-                        "yes",
-                        "no"
-                    ]
-                },
-                "emotion": {
-                    "type": "STRING",
-                    "enum": [
-                        "frustrated",
-                        "angry",
-                        "none"
-                    ]
-                },
-                "callback_promied": {
-                    "type": "STRING",
-                    "enum": [
-                        "yes",
-                        "no"
-                    ]
-                },
-                "call_disconnection": {
-                    "type": "STRING",
-                    "enum": [
-                        "yes",
-                        "no"
-                    ]
-                },
-                "troubleshoot_ticket": {
-                    "type": "STRING",
-                    "enum": [
-                        "yes",
-                        "no"
-                    ]
-                },
-                "customer_issue": {
-                    "type": "STRING"
-                },
-                "reason_for_disconnect": {
-                    "type": "STRING"
-                },
-                "repeat_call_reason": {
-                    "type": "STRING"
+                    "type": "boolean"
                 },
                 "qna": {
-                    "type": "ARRAY",
+                    "type": "array",
                     "items": {
-                        "type": "OBJECT",
+                        "type": "object",
                         "properties": {
                             "cust_question": {
-                                "type": "STRING"
+                                "type": "string"
                             },
                             "agent_answer": {
-                                "type": "STRING"
+                                "type": "string"
                             },
                             "is_cust_satisfied_with_answer": {
-                                "type": "STRING",
-                                "enum": [
-                                    "yes",
-                                    "no",
-                                    "partial",
-                                    "unable_to_determine"
-                                ]
+                                "type": "boolean"
                             },
                             "question_answered_properly": {
-                                "type": "STRING",
-                                "enum": [
-                                    "yes",
-                                    "no",
-                                    "partial",
-                                    "unable_to_determine"
-                                ]
+                                "type": "boolean"
                             }
                         },
                         "required": [
@@ -177,78 +95,6 @@ payload = json.dumps({
                             "question_answered_properly"
                         ]
                     }
-                },
-                "customer_res_reason": {
-                    "type": "STRING"
-                },
-                "start_of_call_sentiment": {
-                    "type": "STRING"
-                },
-                "start_of_call_intent": {
-                    "type": "STRING"
-                },
-                "start_of_call_intent_agent_resolution": {
-                    "type": "STRING"
-                },
-                "customer_satisfied_for_agent_res_starting_intent": {
-                    "type": "STRING"
-                },
-                "start_of_call_customer_frustration_level": {
-                    "type": "STRING"
-                },
-                "start_of_call_customer_anger_level": {
-                    "type": "STRING"
-                },
-                "start_of_call_cust_frustration_after_agent_resolution": {
-                    "type": "STRING"
-                },
-                "start_of_call_cust_sentiment_after_agent_resolution": {
-                    "type": "STRING"
-                },
-                "end_of_call_sentiment": {
-                    "type": "STRING"
-                },
-                "end_of_call_intent": {
-                    "type": "STRING"
-                },
-                "end_of_call_intent_agent_resolution": {
-                    "type": "STRING"
-                },
-                "customer_satisfied_for_agent_res_ending_intent": {
-                    "type": "STRING"
-                },
-                "end_of_call_customer_frustration_level": {
-                    "type": "STRING"
-                },
-                "end_of_call_customer_anger_level": {
-                    "type": "STRING"
-                },
-                "end_of_call_cust_frustration_after_agent_resolution": {
-                    "type": "STRING"
-                },
-                "end_of_call_cust_sentiment_after_agent_resolution": {
-                    "type": "STRING"
-                },
-                "possible_churn_reason": {
-                    "type": "STRING"
-                },
-                "customer_unsatisfaction_phrase": {
-                    "type": "STRING"
-                },
-                "customer_unsatisfaction_phrase_intent": {
-                    "type": "STRING"
-                },
-                "device_name": {
-                    "type": "STRING"
-                },
-                "feature_name": {
-                    "type": "STRING"
-                },
-                "confidence_score_customer_intention_primary": {
-                    "type": "STRING"
-                },
-                 "resolution_emotion": {
-                    "type": "STRING"
                 }
             },
             "required": [
@@ -256,44 +102,10 @@ payload = json.dumps({
                 "sentiment",
                 "topics",
                 "intention",
-                "confidence_score_overall",
-                "customer_intention",
                 "customer_satisfied",
                 "agent_resolution",
                 "agent_resolved_customer_concern",
-                "supervisor_escalation",
-                "callback_promied",
-                "call_disconnection",
-                "troubleshoot_ticket",
-                "customer_issue",
-                "reason_for_disconnect",
-                "repeat_call_reason",
-                "qna",
-                "customer_res_reason",
-                "start_of_call_sentiment",
-                "start_of_call_intent",
-                "start_of_call_intent_agent_resolution",
-                "customer_satisfied_for_agent_res_starting_intent",
-                "start_of_call_customer_frustration_level",
-                "start_of_call_customer_anger_level",
-                "start_of_call_cust_frustration_after_agent_resolution",
-                "start_of_call_cust_sentiment_after_agent_resolution",
-                "end_of_call_sentiment",
-                "end_of_call_intent",
-                "end_of_call_intent_agent_resolution",
-                "customer_satisfied_for_agent_res_ending_intent",
-                "end_of_call_customer_frustration_level",
-                "end_of_call_customer_anger_level",
-                "end_of_call_cust_frustration_after_agent_resolution",
-                "end_of_call_cust_sentiment_after_agent_resolution",
-                "possible_churn_reason",
-                "customer_unsatisfaction_phrase",
-                "customer_unsatisfaction_phrase_intent",
-                "device_name",
-                "feature_name",
-                "confidence_score_customer_intention_primary",
-                "resolution_emotion"
-
+                "qna"
             ]
         }
     },
