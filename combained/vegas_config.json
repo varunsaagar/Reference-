@@ -1,0 +1,8 @@
+{
+    "api_url": "https://vegas-llm.verizon.com/vegas/apps/prompt/LLMInsight",
+    "usecase": "convoiq_gemini",
+    "context_id": "convoiq_exploratory_analysis_gem15pro",
+    "temperature": 0.9,
+    "max_output_tokens": 2048,
+    "top_p": 1.0
+}
