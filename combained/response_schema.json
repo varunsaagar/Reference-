@@ -1,0 +1,133 @@
+{
+  "type": "object",
+  "properties": {
+    "summary": { "type": "string" },
+    "overall_sentiment": { "type": "string" },
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "topic": { "type": "string" },
+          "confidence_score": { "type": "string" },
+          "topic_sentiment": { "type": "string" },
+          "relevant_phrases": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            ]
+          }
+        },
+        "required": [
+          "topic",
+          "confidence_score",
+          "topic_sentiment",
+          "relevant_phrases"
+        ]
+      }
+    },
+    "intention": { "type": "string" },
+    "customer_intention": { "type": "string" },
+    "confidence_score_overall": { "type": "string" },
+    "customer_intention_secondary": { "type": "string" },
+    "confidence_score_customer_intention_secondary": { "type": "string" },
+    "confidence_score_customer_intention_primary": { "type": "string" },
+    "customer_satisfied": { "type": "string" },
+    "customer_res_reason": { "type": "string" },
+    "agent_resolution": { "type": "string" },
+    "agent_resolved_customer_concern": { "type": "string" },
+    "supervisor_escalation": { "type": "string" },
+    "resolution_emotion": { "type": "string" },
+    "callback_promied": { "type": "string" },
+    "call_disconnection": { "type": "string" },
+    "troubleshoot_ticket": { "type": "string" },
+    "customer_issue": { "type": "string" },
+    "repeat_call_reason": { "type": "string" },
+    "reason_for_disconnect": { "type": "string" },
+    "start_of_call_sentiment": { "type": "string" },
+    "start_of_call_intent": { "type": "string" },
+    "start_of_call_intent_agent_resolution": { "type": "string" },
+    "customer_satisfied_for_agent_res_starting_intent": { "type": "string" },
+    "start_of_call_customer_frustration_level": { "type": "string" },
+    "start_of_call_customer_anger_level": { "type": "string" },
+    "start_of_call_cust_frustration_after_agent_resolution": { "type": "string" },
+    "start_of_call_cust_sentiment_after_agent_resolution": { "type": "string" },
+    "end_of_call_sentiment": { "type": "string" },
+    "end_of_call_intent": { "type": "string" },
+    "end_of_call_intent_agent_resolution": { "type": "string" },
+    "customer_satisfied_for_agent_res_ending_intent": { "type": "string" },
+    "end_of_call_customer_frustration_level": { "type": "string" },
+    "end_of_call_customer_anger_level": { "type": "string" },
+    "end_of_call_cust_frustration_after_agent_resolution": { "type": "string" },
+    "end_of_call_cust_sentiment_after_agent_resolution": { "type": "string" },
+    "possible_churn_reason": { "type": "string" },
+    "customer_unsatisfaction_phrase": { "type": "string" },
+    "customer_unsatisfaction_phrase_intent": { "type": "string" },
+    "device_name": { "type": "string" },
+    "feature_name": { "type": "string" },
+    "qna": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cust_question": { "type": "string" },
+          "agent_answer": { "type": "string" },
+          "is_cust_satisfied_with_answer": { "type": "string" },
+          "question_answered_properly": { "type": "string" }
+        },
+        "required": [
+          "cust_question",
+          "agent_answer",
+          "is_cust_satisfied_with_answer",
+          "question_answered_properly"
+        ]
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "overall_sentiment",
+    "topics",
+    "intention",
+    "customer_intention",
+    "confidence_score_overall",
+    "confidence_score_customer_intention_primary",
+    "customer_satisfied",
+    "customer_res_reason",
+    "agent_resolution",
+    "agent_resolved_customer_concern",
+    "supervisor_escalation",
+    "resolution_emotion",
+    "callback_promied",
+    "call_disconnection",
+    "troubleshoot_ticket",
+    "customer_issue",
+    "repeat_call_reason",
+    "reason_for_disconnect",
+    "start_of_call_sentiment",
+    "start_of_call_intent",
+    "start_of_call_intent_agent_resolution",
+    "customer_satisfied_for_agent_res_starting_intent",
+    "start_of_call_customer_frustration_level",
+    "start_of_call_customer_anger_level",
+    "start_of_call_cust_frustration_after_agent_resolution",
+    "start_of_call_cust_sentiment_after_agent_resolution",
+    "end_of_call_sentiment",
+    "end_of_call_intent",
+    "end_of_call_intent_agent_resolution",
+    "customer_satisfied_for_agent_res_ending_intent",
+    "end_of_call_customer_frustration_level",
+    "end_of_call_customer_anger_level",
+    "end_of_call_cust_frustration_after_agent_resolution",
+    "end_of_call_cust_sentiment_after_agent_resolution",
+    "possible_churn_reason",
+    "customer_unsatisfaction_phrase",
+    "customer_unsatisfaction_phrase_intent",
+    "device_name",
+    "feature_name",
+    "qna"
+  ]
+}
