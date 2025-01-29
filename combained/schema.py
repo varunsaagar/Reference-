@@ -1,3 +1,33 @@
+{
+    "useCase": "convoiq_gemini",
+    "contextId": "convoiq_exploratory_analysis_gem15pro",
+    "parameters": {
+        "temperature": 0.9,
+        "maxOutputTokens": 2048,
+        "topP": 1,
+        "responseMimeType": "application/json",
+        "responseSchema": {
+            "type": "object",
+            "properties": {
+                "summary": {
+                    "type": "string"
+                },
+                "sentiment": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "summary",
+                "sentiment"
+            ]
+        }
+    },
+    "preSeed_injection_map": {
+        "": "Who are you?"
+    }
+}
+
+
 import json
 import requests
 from pathlib import Path
