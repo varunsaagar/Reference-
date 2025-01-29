@@ -7,43 +7,41 @@ from jsonschema import validate, ValidationError
 
 # Embedded schema based on the provided specification
 CONVERSATION_ANALYSIS_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "Conversation Analysis Schema",
-    "type": "object",
+    "type": "OBJECT",
     "properties": {
         "summary": {
-            "type": "string",
-            "description": "Precise summary of the entire conversation without missing any details."
+            "type": "STRING"
         },
         "sentiment": {
-            "type": "string",
-            "enum": ["negative", "positive", "neutral"],
-            "description": "Overall sentiment of the customer, strictly one of: 'negative', 'positive', or 'neutral'."
+            "type": "STRING",
+            "enum": ["negative", "positive", "neutral"]
         },
         "topics": {
-            "type": "array",
-            "description": "Accurately determined topics from the conversation.",
+            "type": "ARRAY",
             "items": {
-                "type": "object",
+                "type": "OBJECT",
                 "properties": {
                     "topic": {
-                        "type": "string",
-                        "description": "Short phrase describing the topic (1-3 words)."
+                        "type": "STRING"
                     },
                     "confidence_score": {
-                        "type": "number",
-                        "description": "Confidence score for this topic (range 0-100)."
+                        "type": "INTEGER"
                     },
                     "sentiment": {
-                        "type": "string",
-                        "enum": ["negative", "positive", "neutral"],
-                        "description": "Sentiment associated with this specific topic."
+                        "type": "STRING",
+                        "enum": ["negative", "positive", "neutral"]
                     },
                     "relevant_phrases": {
-                        "description": "Evidence sentence(s) or phrase(s) indicating why this topic was determined.",
                         "oneOf": [
-                            {"type": "string"},
-                            {"type": "array", "items": {"type": "string"}}
+                            {
+                                "type": "STRING"
+                            },
+                            {
+                                "type": "ARRAY",
+                                "items": {
+                                    "type": "STRING"
+                                }
+                            }
                         ]
                     }
                 },
@@ -51,75 +49,89 @@ CONVERSATION_ANALYSIS_SCHEMA = {
             }
         },
         "intention": {
-            "type": "string",
-            "description": "Overall intention of the conversation in strictly one to three words."
+            "type": "STRING"
         },
         "confidence_score_overall": {
-            "type": "number",
-            "description": "Confidence (0-100) for the overall intention."
+            "type": "INTEGER"
         },
         "customer_intention": {
-            "type": "string",
-            "description": "Customer's primary intention in two to three words."
+            "type": "STRING"
         },
         "customer_intention_secondary": {
-            "type": "string",
-            "description": "Secondary intention if multiple issues or requests are discussed. Otherwise can be null or empty."
+            "type": "STRING",
+            "nullable": true
         },
         "confidence_score_customer_intention_secondary": {
-            "type": "number",
-            "description": "Confidence (0-100) for the secondary intention. Can be null or 0 if no secondary intention."
+            "type": "INTEGER",
+            "nullable": true
         },
         "customer_satisfied": {
-            "type": "string",
-            "enum": ["Yes", "No"],
-            "description": "Indicates if customer is satisfied with agent resolution at the end of call."
+            "type": "STRING",
+            "enum": ["Yes", "No"]
         },
         "agent_resolution": {
-            "type": "string",
-            "description": "Detailed summary of agent actions and the resolution or help provided."
+            "type": "STRING"
         },
         "agent_resolved_customer_concern": {
-            "type": "string",
-            "enum": ["yes", "no"],
-            "description": "Whether the agent successfully resolved the customer's concern."
+            "type": "STRING",
+            "enum": ["yes", "no"]
         },
         "supervisor_escalation": {
-            "type": "string",
-            "enum": ["yes", "no"],
-            "description": "If customer requested or agent had to escalate to a supervisor."
+            "type": "STRING",
+            "enum": ["yes", "no"]
         },
         "emotion": {
-            "type": "string",
-            "enum": ["frustrated", "angry", "none"],
-            "description": "If the customer was not satisfied, specify if they're frustrated or angry. 'none' if not applicable."
+            "type": "STRING",
+            "enum": ["frustrated", "angry", "none"]
         },
         "callback_promied": {
-            "type": "string",
-            "enum": ["yes", "no"],
-            "description": "Indicates if the agent promised a callback for further action or resolution."
+            "type": "STRING",
+            "enum": ["yes", "no"]
         },
         "call_disconnection": {
-            "type": "string",
-            "enum": ["yes", "no"],
-            "description": "If the call was disconnected or abandoned."
+            "type": "STRING",
+            "enum": ["yes", "no"]
         },
         "troubleshoot_ticket": {
-            "type": "string",
-            "enum": ["yes", "no"],
-            "description": "If a troubleshoot ticket was created (or offered) due to unsatisfactory resolution."
+            "type": "STRING",
+            "enum": ["yes", "no"]
         },
         "customer_issue": {
-            "type": "string",
-            "description": "Accurate statement of the customer's issue or concern in detail."
+            "type": "STRING"
         },
         "reason_for_disconnect": {
-            "type": "string",
-            "description": "Brief reason why customer wants to disconnect, or 'unable to determine' if not clear."
+            "type": "STRING"
         },
         "repeat_call_reason": {
-            "type": "string",
-            "description": "If customer has called earlier for the same issue, specify how many times and relevant evidence from transcript."
+            "type": "STRING"
+        },
+        "qna": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "cust_question": {
+                        "type": "STRING"
+                    },
+                    "agent_answer": {
+                        "type": "STRING"
+                    },
+                    "is_cust_satisfied_with_answer": {
+                        "type": "STRING",
+                        "enum": ["yes", "no", "partial", "unable_to_determine"]
+                    },
+                    "question_answered_properly": {
+                        "type": "STRING",
+                        "enum": ["yes", "no", "partial", "unable_to_determine"]
+                    }
+                },
+                "required": [
+                    "cust_question",
+                    "agent_answer",
+                    "is_cust_satisfied_with_answer",
+                    "question_answered_properly"
+                ]
+            }
         }
     },
     "required": [
@@ -129,8 +141,6 @@ CONVERSATION_ANALYSIS_SCHEMA = {
         "intention",
         "confidence_score_overall",
         "customer_intention",
-        "customer_intention_secondary",
-        "confidence_score_customer_intention_secondary",
         "customer_satisfied",
         "agent_resolution",
         "agent_resolved_customer_concern",
@@ -140,9 +150,11 @@ CONVERSATION_ANALYSIS_SCHEMA = {
         "troubleshoot_ticket",
         "customer_issue",
         "reason_for_disconnect",
-        "repeat_call_reason"
+        "repeat_call_reason",
+        "qna"
     ]
 }
+
 
 @dataclass
 class VegasConfig:
