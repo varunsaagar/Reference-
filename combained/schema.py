@@ -1,3 +1,5 @@
+{"vegasTransactionId":"fd27997e-a1dc-4fde-91dc-68e401bd6f3f","errorCode":"424 FAILED_DEPENDENCY","message":"400 Bad Request: \"[{<EOL>  \"error\": {<EOL>    \"code\": 400,<EOL>    \"message\": \"Unable to submit request because one or more response schemas didn't specify the schema type field. Learn more: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/control-generated-output\",<EOL>    \"status\": \"INVALID_ARGUMENT\"<EOL>  }<EOL>}<EOL>]\"","statusCode":424,"statusName":"FAILED_DEPENDENCY","path":"/vegas/apps/prompt/LLMInsight","method":"POST","timestamp":"2025-01-29T19:20:51.84325622"}
+
 import requests
 import json
 
