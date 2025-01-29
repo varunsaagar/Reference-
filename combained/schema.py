@@ -1,3 +1,8 @@
+{"vegasTransactionId":"dd4301e0-0028-4edf-8be7-3c3c9d07d48f","errorCode":"424 FAILED_DEPENDENCY","message":"400 Bad Request: \"[{<EOL>  \"error\": {<EOL>    \"code\": 400,<EOL>    \"message\": \"Request contains an invalid argument.\",<EOL>    \"status\": \"INVALID_ARGUMENT\"<EOL>  }<EOL>}<EOL>]\"","statusCode":424,"statusName":"FAILED_DEPENDENCY","path":"/vegas/apps/prompt/LLMInsight","method":"POST","timestamp":"2025-01-29T19:26:22.101028747"}
+
+
+
+
 import requests
 import json
 
